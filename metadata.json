@@ -1,0 +1,8 @@
+{
+  "name": "Creator Rate Studio",
+  "description": "Algorithmic sponsorship pricing engine, tiered rate card generator, and 15-clause contract red-flag audit workbench for independent creators.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
