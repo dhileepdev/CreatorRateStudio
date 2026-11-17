@@ -16,7 +16,8 @@ import {
   PlatformId,
   UsageRightsTerm,
 } from '../types/calculator';
-import { formatCurrency, formatNumber } from '../utils/pricingEngine';
+import { useCurrency } from '../context/CurrencyContext';
+import { formatCurrency, formatCurrencyExact, formatNumber } from '../utils/pricingEngine';
 
 interface ProfileScopePanelProps {
   profile: CreatorProfile;
@@ -37,6 +38,7 @@ export const ProfileScopePanel: React.FC<ProfileScopePanelProps> = ({
   onChangeProfile,
   onChangeScope,
 }) => {
+  const { currency } = useCurrency();
   const nicheSpec = NICHE_BENCHMARKS[profile.niche];
   const platformIds: PlatformId[] = [
     'instagram_reels',
@@ -224,7 +226,7 @@ export const ProfileScopePanel: React.FC<ProfileScopePanelProps> = ({
                 Niche Sponsorship CPM
               </label>
               <span className="text-xs font-mono font-semibold text-slate-900">
-                {formatCurrency(result.breakdown.activeCpm)} / 1K views
+                {formatCurrency(result.breakdown.activeCpm, currency)} / 1K views
               </span>
             </div>
             <input
@@ -243,7 +245,7 @@ export const ProfileScopePanel: React.FC<ProfileScopePanelProps> = ({
               className="w-full mt-2 accent-blue-700 cursor-pointer"
             />
             <div className="flex items-center justify-between text-[11px] text-slate-500 font-mono mt-1">
-              <span>${nicheSpec.cpmMin} min</span>
+              <span>{formatCurrency(nicheSpec.cpmMin, currency)} min</span>
               <button
                 type="button"
                 onClick={() =>
@@ -251,9 +253,9 @@ export const ProfileScopePanel: React.FC<ProfileScopePanelProps> = ({
                 }
                 className="text-blue-700 hover:underline font-sans cursor-pointer"
               >
-                Reset (${nicheSpec.defaultCpm})
+                Reset ({formatCurrency(nicheSpec.defaultCpm, currency)})
               </button>
-              <span>${nicheSpec.cpmMax} max</span>
+              <span>{formatCurrency(nicheSpec.cpmMax, currency)} max</span>
             </div>
           </div>
         </div>
@@ -315,7 +317,7 @@ export const ProfileScopePanel: React.FC<ProfileScopePanelProps> = ({
               htmlFor="production-floor"
               className="block text-xs font-semibold text-slate-700 mb-1.5"
             >
-              Production Floor ($)
+              Production Floor (USD)
             </label>
             <input
               id="production-floor"
@@ -337,7 +339,12 @@ export const ProfileScopePanel: React.FC<ProfileScopePanelProps> = ({
               className="w-full px-3 py-2 text-sm font-mono bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
             />
             <p className="text-[11px] text-slate-500 mt-1">
-              $100 minimum floor for gear, editing & overhead.
+              {formatCurrency(100, currency)} minimum floor for gear, editing &amp; overhead.
+              {currency !== 'USD' && (
+                <span className="font-mono text-blue-700 ml-1">
+                  (≈ {formatCurrencyExact(profile.productionFloorCost, currency)})
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -562,7 +569,7 @@ export const ProfileScopePanel: React.FC<ProfileScopePanelProps> = ({
                   htmlFor="ad-spend-input"
                   className="block text-xs font-medium text-slate-700 mb-1"
                 >
-                  Brand Paid Ad Spend Budget ($ Optional)
+                  Brand Paid Ad Spend Budget (USD Optional)
                 </label>
                 <input
                   id="ad-spend-input"
@@ -582,6 +589,11 @@ export const ProfileScopePanel: React.FC<ProfileScopePanelProps> = ({
                 />
                 <p className="text-[11px] text-slate-500 mt-1">
                   Enter $0 to apply standard 20% Base Fee rate.
+                  {currency !== 'USD' && scope.whitelistingAdSpendEstimate > 0 && (
+                    <span className="font-mono text-blue-700 ml-1">
+                      (≈ {formatCurrencyExact(scope.whitelistingAdSpendEstimate, currency)})
+                    </span>
+                  )}
                 </p>
               </div>
               <div>
@@ -763,10 +775,10 @@ export const ProfileScopePanel: React.FC<ProfileScopePanelProps> = ({
                     }
                     className="px-2 py-2 text-xs font-mono bg-white border border-slate-300 rounded-lg"
                   >
-                    <option value={150}>$150/rd</option>
-                    <option value={200}>$200/rd</option>
-                    <option value={250}>$250/rd</option>
-                    <option value={350}>$350/rd</option>
+                    <option value={150}>{formatCurrency(150, currency)}/rd</option>
+                    <option value={200}>{formatCurrency(200, currency)}/rd</option>
+                    <option value={250}>{formatCurrency(250, currency)}/rd</option>
+                    <option value={350}>{formatCurrency(350, currency)}/rd</option>
                   </select>
                 </div>
               ) : (

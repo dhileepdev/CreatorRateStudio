@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Scale, X } from 'lucide-react';
+import { CheckCircle2, Scale, Share2, X } from 'lucide-react';
 import { BenchmarksSection } from './components/BenchmarksSection';
 import { ContractAuditSection } from './components/ContractAuditSection';
+import { CurrencyProModal } from './components/CurrencyProModal';
 import { DealComparisonView } from './components/DealComparisonView';
 import { Header } from './components/Header';
 import { ProfileScopePanel } from './components/ProfileScopePanel';
 import { ValuationPanel } from './components/ValuationPanel';
+import { CurrencyProvider, useCurrency } from './context/CurrencyContext';
 import {
   CREATOR_PRESETS,
   PLATFORM_SPECS,
@@ -22,6 +24,10 @@ import {
   formatCurrencyExact,
   generateRateCardMarkdown,
 } from './utils/pricingEngine';
+import {
+  buildShareConfigUrl,
+  readSharedConfigFromLocation,
+} from './utils/shareConfig';
 
 const SAVED_DEALS_STORAGE_KEY = 'creator_rate_studio_saved_deals_v1';
 
@@ -36,21 +42,32 @@ function loadSavedDeals(): SavedDealSnapshot[] {
   }
 }
 
-export default function App() {
+function AppContent() {
+  const { currency } = useCurrency();
   const initialPreset = CREATOR_PRESETS[0];
+  const [sharedInitialConfig] = useState(() => readSharedConfigFromLocation());
 
   const [activeView, setActiveView] = useState<AppView>('workbench');
   const [activePresetId, setActivePresetId] = useState<string | null>(
-    initialPreset.id
+    sharedInitialConfig ? null : initialPreset.id
   );
-  const [profile, setProfile] = useState<CreatorProfile>(initialPreset.profile);
-  const [scope, setScope] = useState<DealScope>(initialPreset.scope);
+  const [profile, setProfile] = useState<CreatorProfile>(
+    sharedInitialConfig ? sharedInitialConfig.profile : initialPreset.profile
+  );
+  const [scope, setScope] = useState<DealScope>(
+    sharedInitialConfig ? sharedInitialConfig.scope : initialPreset.scope
+  );
   const [flaggedClauseIds, setFlaggedClauseIds] = useState<number[]>([1, 5, 12]);
   const [savedDeals, setSavedDeals] = useState<SavedDealSnapshot[]>(loadSavedDeals);
+  const [sharedUrl, setSharedUrl] = useState<string | null>(null);
   const [toast, setToast] = useState<{
     message: string;
     showCompareLink?: boolean;
-  } | null>(null);
+  } | null>(
+    sharedInitialConfig
+      ? { message: 'Loaded shared deal configuration from URL.' }
+      : null
+  );
 
   const result = useMemo(
     () => calculateDealRate(profile, scope),
@@ -81,6 +98,7 @@ export default function App() {
     setActivePresetId(preset.id);
     setProfile(preset.profile);
     setScope(preset.scope);
+    setSharedUrl(null);
     showToast(`Loaded "${preset.label}" metrics and scope.`);
   };
 
@@ -88,16 +106,19 @@ export default function App() {
     updater: (prev: CreatorProfile) => CreatorProfile
   ) => {
     setActivePresetId(null);
+    setSharedUrl(null);
     setProfile(updater);
   };
 
   const handleChangeScope = (updater: (prev: DealScope) => DealScope) => {
     setActivePresetId(null);
+    setSharedUrl(null);
     setScope(updater);
   };
 
   const handleApplyTierScope = (tierId: 'tierA' | 'tierB' | 'tierC') => {
     setActivePresetId(null);
+    setSharedUrl(null);
     if (tierId === 'tierA') {
       setScope((prev) => ({
         ...prev,
@@ -140,7 +161,7 @@ export default function App() {
   ) => {
     const fallbackName = `${PLATFORM_SPECS[profile.platform].shortLabel} · ${
       USAGE_RIGHTS_SPECS[scope.usageRightsTerm].label.split(' ')[0]
-    } (${formatCurrencyExact(result.breakdown.totalRecommendedRate)})`;
+    } (${formatCurrencyExact(result.breakdown.totalRecommendedRate, currency)})`;
 
     const normalizedTags = Array.isArray(tags)
       ? Array.from(new Set(tags.map((t) => t.trim()).filter(Boolean)))
@@ -231,6 +252,7 @@ export default function App() {
 
   const handleLoadDealIntoCalculator = (deal: SavedDealSnapshot) => {
     setActivePresetId(null);
+    setSharedUrl(null);
     setProfile(deal.profile);
     setScope(deal.scope);
     setActiveView('workbench');
@@ -264,7 +286,9 @@ export default function App() {
       prev.map((d) => (d.id === id ? { ...d, targetCpa } : d))
     );
     showToast(
-      targetCpa ? `Updated Target CPA to ${formatCurrencyExact(targetCpa)}.` : 'Cleared Target CPA.'
+      targetCpa
+        ? `Updated Target CPA to ${formatCurrencyExact(targetCpa, currency)}.`
+        : 'Cleared Target CPA.'
     );
   };
 
@@ -277,7 +301,10 @@ export default function App() {
     );
     showToast(
       targetMonthlyRevenue
-        ? `Updated Target Monthly Revenue to ${formatCurrencyExact(targetMonthlyRevenue)}.`
+        ? `Updated Target Monthly Revenue to ${formatCurrencyExact(
+            targetMonthlyRevenue,
+            currency
+          )}.`
         : 'Cleared Target Monthly Revenue.'
     );
   };
@@ -293,12 +320,28 @@ export default function App() {
   };
 
   const handleCopyRateCard = async () => {
-    const md = generateRateCardMarkdown(profile, scope, result);
+    const md = generateRateCardMarkdown(profile, scope, result, currency);
     try {
       await navigator.clipboard.writeText(md);
-      showToast('Copied formatted Markdown rate card to clipboard.');
+      showToast(`Copied formatted Markdown rate card (${currency}) to clipboard.`);
     } catch {
       showToast('Unable to access clipboard in this browser context.');
+    }
+  };
+
+  const handleShareConfiguration = async () => {
+    const url = buildShareConfigUrl(profile, scope);
+    setSharedUrl(url);
+    try {
+      window.history.replaceState(null, '', url);
+    } catch {
+      // Ignore history errors in sandboxed contexts
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('Shareable configuration URL copied to clipboard.');
+    } catch {
+      showToast('Shareable configuration URL generated below.');
     }
   };
 
@@ -379,7 +422,15 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleShareConfiguration}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium text-slate-800 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap"
+                >
+                  <Share2 className="w-4 h-4 text-blue-700" aria-hidden="true" />
+                  <span>Share Configuration</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -419,7 +470,10 @@ export default function App() {
                   scope={scope}
                   result={result}
                   savedDealsCount={savedDeals.length}
+                  sharedUrl={sharedUrl}
                   onCopyRateCard={handleCopyRateCard}
+                  onShareConfiguration={handleShareConfiguration}
+                  onDismissSharedUrl={() => setSharedUrl(null)}
                   onSaveToComparison={handleSaveToComparison}
                   onOpenComparison={() => {
                     setActiveView('comparison');
@@ -447,7 +501,11 @@ export default function App() {
             />
 
             {/* 2026 Benchmarks Reference */}
-            <BenchmarksSection profile={profile} result={result} />
+            <BenchmarksSection
+              profile={profile}
+              result={result}
+              savedDeals={savedDeals}
+            />
           </>
         )}
       </main>
@@ -468,6 +526,8 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      <CurrencyProModal onNotify={(msg) => showToast(msg)} />
 
       {/* Non-blocking Toast Notification */}
       {toast && (
@@ -502,5 +562,13 @@ export default function App() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <CurrencyProvider>
+      <AppContent />
+    </CurrencyProvider>
   );
 }

@@ -1,14 +1,29 @@
-import React, { useMemo, useState } from 'react';
-import { AlertTriangle, CheckSquare, Copy, Mail, ShieldAlert, Square } from 'lucide-react';
+import React, { useMemo, useRef, useState } from 'react';
+import {
+  AlertTriangle,
+  CheckSquare,
+  Copy,
+  Mail,
+  ShieldAlert,
+  ShieldCheck,
+  Square,
+} from 'lucide-react';
 import { CONTRACT_RED_FLAGS } from '../data/benchmarks';
 import {
   CalculatedDealResult,
   ClauseCategory,
+  ContractRiskLevel,
   CreatorProfile,
   DealScope,
   EmailScenarioId,
 } from '../types/calculator';
-import { generateNegotiationEmail } from '../utils/pricingEngine';
+import { useCurrency } from '../context/CurrencyContext';
+import {
+  calculateContractRiskScore,
+  formatCurrencyExact,
+  generateNegotiationEmail,
+} from '../utils/pricingEngine';
+import { LegalLibraryPanel } from './LegalLibraryPanel';
 
 interface ContractAuditSectionProps {
   profile: CreatorProfile;
@@ -37,12 +52,20 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
   onClearFlags,
   onNotify,
 }) => {
+  const { currency } = useCurrency();
   const [categoryFilter, setCategoryFilter] = useState<'All' | ClauseCategory>('All');
   const [activeClauseId, setActiveClauseId] = useState<number>(1);
   const [scenario, setScenario] = useState<EmailScenarioId>('three_tier_anchor');
   const [brandName, setBrandName] = useState('');
   const [creatorName, setCreatorName] = useState('');
   const [offeredBudget, setOfferedBudget] = useState<number>(0);
+  const scannerRef = useRef<HTMLDivElement | null>(null);
+
+  const handleInspectClauseFromLibrary = (clauseId: number) => {
+    setCategoryFilter('All');
+    setActiveClauseId(clauseId);
+    scannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
 
   const categories: Array<'All' | ClauseCategory> = [
     'All',
@@ -66,6 +89,11 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
     [flaggedClauseIds]
   );
 
+  const riskAssessment = useMemo(
+    () => calculateContractRiskScore(flaggedClauses, CONTRACT_RED_FLAGS),
+    [flaggedClauses]
+  );
+
   const generatedEmail = useMemo(
     () =>
       generateNegotiationEmail({
@@ -77,8 +105,9 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
         scope,
         result,
         flaggedClauses,
+        currency,
       }),
-    [scenario, brandName, creatorName, offeredBudget, profile, scope, result, flaggedClauses]
+    [scenario, brandName, creatorName, offeredBudget, profile, scope, result, flaggedClauses, currency]
   );
 
   const copyText = async (text: string, label: string) => {
@@ -138,10 +167,208 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
         </div>
       </div>
 
+      {/* Predatory Contract Risk Score Card with Circular Progress Ring */}
+      {(() => {
+        const ringStyles: Record<
+          ContractRiskLevel,
+          {
+            stroke: string;
+            badgeText: string;
+            surfaceClass: string;
+            barClass: string;
+          }
+        > = {
+          low: {
+            stroke: '#047857',
+            badgeText: 'text-emerald-800',
+            surfaceClass: 'bg-emerald-50/50 border-emerald-200',
+            barClass: 'bg-emerald-700',
+          },
+          moderate: {
+            stroke: '#D97706',
+            badgeText: 'text-amber-800',
+            surfaceClass: 'bg-amber-50/50 border-amber-200',
+            barClass: 'bg-amber-600',
+          },
+          high: {
+            stroke: '#EA580C',
+            badgeText: 'text-orange-800',
+            surfaceClass: 'bg-orange-50/50 border-orange-200',
+            barClass: 'bg-orange-600',
+          },
+          critical: {
+            stroke: '#DC2626',
+            badgeText: 'text-red-800',
+            surfaceClass: 'bg-red-50/50 border-red-200',
+            barClass: 'bg-red-600',
+          },
+        };
+
+        const style = ringStyles[riskAssessment.level];
+        const radius = 44;
+        const circumference = 2 * Math.PI * radius;
+        const dashOffset =
+          circumference * (1 - Math.min(100, Math.max(1, riskAssessment.score)) / 100);
+
+        return (
+          <div
+            aria-label="Contract risk score summary"
+            className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center"
+          >
+            {/* Circular Progress Ring + Headline Score */}
+            <div className="lg:col-span-5 flex items-center gap-5">
+              <div
+                role="img"
+                aria-label={`Contract risk score: ${riskAssessment.score} out of 100 (${riskAssessment.levelLabel})`}
+                className="relative w-28 h-28 shrink-0 flex items-center justify-center"
+              >
+                <svg className="w-28 h-28 -rotate-90" viewBox="0 0 108 108">
+                  <circle
+                    cx="54"
+                    cy="54"
+                    r={radius}
+                    fill="none"
+                    stroke="#E2E8F0"
+                    strokeWidth="10"
+                  />
+                  <circle
+                    cx="54"
+                    cy="54"
+                    r={radius}
+                    fill="none"
+                    stroke={style.stroke}
+                    strokeWidth="10"
+                    strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={dashOffset}
+                    className="transition-[stroke-dashoffset,stroke] duration-300 ease-out"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center tabular-nums">
+                  <span className="font-mono text-2xl font-bold text-slate-900 leading-none">
+                    {riskAssessment.score}
+                  </span>
+                  <span className="font-mono text-[11px] text-slate-500 mt-0.5">
+                    / 100
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 min-w-0">
+                <div className="inline-flex items-center gap-1.5 text-xs font-semibold">
+                  {riskAssessment.level === 'low' ? (
+                    <ShieldCheck
+                      className={`w-4 h-4 shrink-0 ${style.badgeText}`}
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <ShieldAlert
+                      className={`w-4 h-4 shrink-0 ${style.badgeText}`}
+                      aria-hidden="true"
+                    />
+                  )}
+                  <span className={style.badgeText}>{riskAssessment.levelLabel}</span>
+                  <span className="text-slate-300" aria-hidden="true">
+                    ·
+                  </span>
+                  <span className="font-mono text-slate-700 tabular-nums">
+                    {riskAssessment.criticalCount} critical, {riskAssessment.warningCount} warning
+                  </span>
+                </div>
+                <h3 className="font-display text-sm sm:text-base font-semibold text-slate-900">
+                  Contract Predatory Risk Score
+                </h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  {riskAssessment.summary}
+                </p>
+              </div>
+            </div>
+
+            {/* Category Exposure Breakdown + Top Drivers */}
+            <div className="lg:col-span-7 space-y-3.5 border-t lg:border-t-0 lg:border-l border-slate-200 pt-4 lg:pt-0 lg:pl-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 tabular-nums">
+                {riskAssessment.categoryBreakdown.map((cat) => {
+                  const pct =
+                    cat.totalCount > 0
+                      ? Math.round((cat.flaggedCount / cat.totalCount) * 100)
+                      : 0;
+                  return (
+                    <div
+                      key={cat.category}
+                      className={`p-2.5 rounded-lg border ${
+                        cat.flaggedCount > 0
+                          ? style.surfaceClass
+                          : 'bg-slate-50/70 border-slate-200'
+                      } space-y-1.5`}
+                    >
+                      <div className="text-[11px] font-semibold text-slate-800 truncate">
+                        {cat.category}
+                      </div>
+                      <div className="flex items-baseline justify-between gap-1 font-mono text-xs">
+                        <strong className="text-slate-900">
+                          {cat.flaggedCount}/{cat.totalCount}
+                        </strong>
+                        <span className="text-[11px] text-slate-500">
+                          +{cat.weightPoints} pts
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full bg-slate-200/80 rounded-sm overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-300 ${
+                            cat.flaggedCount > 0 ? style.barClass : 'bg-slate-300'
+                          }`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                <span className="text-[11px] font-semibold text-slate-600 mr-1">
+                  Top Risk Drivers:
+                </span>
+                {riskAssessment.topDrivers.length === 0 ? (
+                  <span className="text-[11px] text-slate-500">
+                    Check clauses in the 15-clause scanner below to calculate exposure.
+                  </span>
+                ) : (
+                  riskAssessment.topDrivers.map((driver) => (
+                    <button
+                      key={`driver-${driver.clauseId}`}
+                      type="button"
+                      onClick={() => setActiveClauseId(driver.clauseId)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-300 rounded-md transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                    >
+                      <span
+                        className={`font-mono font-semibold ${
+                          driver.severity === 'critical'
+                            ? 'text-red-700'
+                            : 'text-amber-700'
+                        }`}
+                      >
+                        +{driver.weightPoints}
+                      </span>
+                      <span>
+                        #{driver.clauseId} {driver.clauseTitle}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Main 2-Column Audit + Script Workbench */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left 7 cols: 15-Clause Interactive Scanner */}
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div
+          ref={scannerRef}
+          className="lg:col-span-7 bg-white border border-slate-200 rounded-xl overflow-hidden"
+        >
           {/* Category Filter Bar */}
           <div className="px-4 py-3 border-b border-slate-200 bg-slate-50/70 flex flex-wrap items-center gap-1.5">
             {categories.map((cat) => (
@@ -360,7 +587,7 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
                 htmlFor="script-budget"
                 className="block text-[11px] font-semibold text-slate-700 mb-1"
               >
-                Brand Offer ($)
+                Brand Offer (USD)
               </label>
               <input
                 id="script-budget"
@@ -372,6 +599,11 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
                 placeholder="Optional"
                 className="w-full px-2.5 py-1.5 text-xs font-mono bg-white border border-slate-300 rounded-md focus:outline-none focus:border-blue-600"
               />
+              {currency !== 'USD' && offeredBudget > 0 && (
+                <div className="text-[10px] font-mono text-blue-700 mt-0.5">
+                  ≈ {formatCurrencyExact(offeredBudget, currency)}
+                </div>
+              )}
             </div>
           </div>
 
@@ -414,6 +646,14 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Searchable Legal Library */}
+      <LegalLibraryPanel
+        flaggedClauseIds={flaggedClauseIds}
+        onToggleClause={onToggleClause}
+        onInspectClauseInScanner={handleInspectClauseFromLibrary}
+        onCopyText={copyText}
+      />
     </section>
   );
 };

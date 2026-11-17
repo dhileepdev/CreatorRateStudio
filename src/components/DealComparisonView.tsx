@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowUpDown,
   BookmarkPlus,
@@ -25,9 +26,12 @@ import {
   PLATFORM_SPECS,
   USAGE_RIGHTS_SPECS,
 } from '../data/benchmarks';
+import { useCurrency } from '../context/CurrencyContext';
 import {
+  BenchmarkDeviation,
   CalculatedDealResult,
   CreatorProfile,
+  CurrencyCode,
   DealScope,
   DEFAULT_DEAL_TAGS,
   PlatformId,
@@ -48,13 +52,16 @@ import {
   YAxis,
 } from 'recharts';
 import {
+  calculateNicheTierBenchmark,
   calculatePerformanceProjection,
   formatCurrency,
   formatCurrencyExact,
   formatNumber,
   generateComparisonMarkdown,
 } from '../utils/pricingEngine';
+import { DealPipelineTimeline } from './DealPipelineTimeline';
 import { NegotiationCoachPanel } from './NegotiationCoachPanel';
+import { SavedDealsHighlights } from './SavedDealsHighlights';
 
 interface DealComparisonViewProps {
   savedDeals: SavedDealSnapshot[];
@@ -113,6 +120,7 @@ interface ChartDatum {
 
 interface ChartTooltipProps {
   active?: boolean;
+  currency: CurrencyCode;
   payload?: Array<{
     name?: string;
     value?: number;
@@ -122,7 +130,7 @@ interface ChartTooltipProps {
   }>;
 }
 
-const DealChartTooltip: React.FC<ChartTooltipProps> = ({ active, payload }) => {
+const DealChartTooltip: React.FC<ChartTooltipProps> = ({ active, payload, currency }) => {
   if (!active || !payload || payload.length === 0) return null;
   const d = payload[0].payload;
   return (
@@ -150,14 +158,14 @@ const DealChartTooltip: React.FC<ChartTooltipProps> = ({ active, payload }) => {
               <span className="truncate">{entry.name}</span>
             </span>
             <span className="font-mono shrink-0">
-              {formatCurrencyExact(Number(entry.value ?? 0))}
+              {formatCurrencyExact(Number(entry.value ?? 0), currency)}
             </span>
           </div>
         ))}
         {payload.length > 1 && (
           <div className="flex items-center justify-between gap-4 font-bold text-slate-900 pt-1 border-t border-slate-100">
             <span>Total Recommended Rate</span>
-            <span className="font-mono">{formatCurrencyExact(d.totalFee)}</span>
+            <span className="font-mono">{formatCurrencyExact(d.totalFee, currency)}</span>
           </div>
         )}
       </div>
@@ -166,30 +174,30 @@ const DealChartTooltip: React.FC<ChartTooltipProps> = ({ active, payload }) => {
       <div className="space-y-1 border-t border-slate-100 pt-2 text-[11px] tabular-nums">
         <div className="flex items-center justify-between gap-4 text-slate-600">
           <span>Base Creation Fee</span>
-          <span className="font-mono">{formatCurrencyExact(d.baseFee)}</span>
+          <span className="font-mono">{formatCurrencyExact(d.baseFee, currency)}</span>
         </div>
         <div className="flex items-center justify-between gap-4 text-slate-600">
           <span>Paid Usage Rights</span>
-          <span className="font-mono">{formatCurrencyExact(d.usageFee)}</span>
+          <span className="font-mono">{formatCurrencyExact(d.usageFee, currency)}</span>
         </div>
         <div className="flex items-center justify-between gap-4 text-slate-600">
           <span>Whitelisting</span>
-          <span className="font-mono">{formatCurrencyExact(d.whitelistingFee)}</span>
+          <span className="font-mono">{formatCurrencyExact(d.whitelistingFee, currency)}</span>
         </div>
         <div className="flex items-center justify-between gap-4 text-slate-600">
           <span>Category Exclusivity</span>
-          <span className="font-mono">{formatCurrencyExact(d.exclusivityFee)}</span>
+          <span className="font-mono">{formatCurrencyExact(d.exclusivityFee, currency)}</span>
         </div>
         {d.otherRidersFee > 0 && (
           <div className="flex items-center justify-between gap-4 text-slate-600">
             <span>Rush / Extra Revisions</span>
-            <span className="font-mono">{formatCurrencyExact(d.otherRidersFee)}</span>
+            <span className="font-mono">{formatCurrencyExact(d.otherRidersFee, currency)}</span>
           </div>
         )}
         {d.deltaVsLowest > 0 && (
           <div className="flex items-center justify-between gap-4 text-blue-700 font-medium pt-1">
             <span>Difference vs. lowest</span>
-            <span className="font-mono">+{formatCurrencyExact(d.deltaVsLowest)}</span>
+            <span className="font-mono">+{formatCurrencyExact(d.deltaVsLowest, currency)}</span>
           </div>
         )}
         {d.notes && (
@@ -218,10 +226,11 @@ interface TrendDatum {
 
 interface TrendTooltipProps {
   active?: boolean;
+  currency: CurrencyCode;
   payload?: Array<{ payload: TrendDatum }>;
 }
 
-const TrendChartTooltip: React.FC<TrendTooltipProps> = ({ active, payload }) => {
+const TrendChartTooltip: React.FC<TrendTooltipProps> = ({ active, payload, currency }) => {
   if (!active || !payload || payload.length === 0) return null;
   const d = payload[0].payload;
   return (
@@ -236,12 +245,12 @@ const TrendChartTooltip: React.FC<TrendTooltipProps> = ({ active, payload }) => 
         <div className="flex items-center justify-between gap-4 font-semibold text-slate-900">
           <span>Total Deal Rate</span>
           <span className="font-mono text-blue-700">
-            {formatCurrencyExact(d.totalRate)}
+            {formatCurrencyExact(d.totalRate, currency)}
           </span>
         </div>
         <div className="flex items-center justify-between gap-4 text-slate-600">
           <span>Base Creation Fee</span>
-          <span className="font-mono">{formatCurrencyExact(d.baseFee)}</span>
+          <span className="font-mono">{formatCurrencyExact(d.baseFee, currency)}</span>
         </div>
         {d.deltaFromPrev !== null && (
           <div
@@ -256,7 +265,7 @@ const TrendChartTooltip: React.FC<TrendTooltipProps> = ({ active, payload }) => 
             <span>vs. previous saved</span>
             <span className="font-mono">
               {d.deltaFromPrev > 0 ? '+' : ''}
-              {formatCurrencyExact(d.deltaFromPrev)}
+              {formatCurrencyExact(d.deltaFromPrev, currency)}
             </span>
           </div>
         )}
@@ -411,6 +420,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
   onClearAllDeals,
   onNotify,
 }) => {
+  const { currency } = useCurrency();
   const [diffOnly, setDiffOnly] = useState(false);
   const [chartMode, setChartMode] = useState<'total' | 'stacked'>('total');
   const [trendMode, setTrendMode] = useState<'total' | 'compareBase'>('total');
@@ -519,6 +529,19 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
       max: Math.max(...rates),
     };
   }, [visibleDeals]);
+
+  const benchmarkDeviations = useMemo(() => {
+    const map = new Map<string, BenchmarkDeviation>();
+    for (const deal of visibleDeals) {
+      map.set(deal.id, calculateNicheTierBenchmark(deal));
+    }
+    return map;
+  }, [visibleDeals]);
+
+  const outlierDeals = useMemo(
+    () => visibleDeals.filter((d) => benchmarkDeviations.get(d.id)?.isOutlier),
+    [visibleDeals, benchmarkDeviations]
+  );
 
   const resetFilters = () => {
     setPlatformFilter('all');
@@ -652,21 +675,36 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
     const checkDiff = (vals: string[]) => new Set(vals).size > 1;
 
     const totalVals = visibleDeals.map((d) =>
-      formatCurrencyExact(d.result.breakdown.totalRecommendedRate)
+      formatCurrencyExact(d.result.breakdown.totalRecommendedRate, currency)
     );
     const totalNums = visibleDeals.map(
       (d) => d.result.breakdown.totalRecommendedRate
     );
     const minTotal = Math.min(...totalNums);
 
+    const benchVals = visibleDeals.map((d) => {
+      const dev = benchmarkDeviations.get(d.id);
+      return dev ? formatCurrencyExact(dev.averageBenchmark, currency) : '—';
+    });
+    const benchSub = visibleDeals.map((d) => {
+      const dev = benchmarkDeviations.get(d.id);
+      if (!dev) return '';
+      const sign = dev.deviationPct >= 0 ? '+' : '';
+      return dev.isOutlier
+        ? `${sign}${dev.deviationPct.toFixed(1)}% (${
+            dev.direction === 'above' ? 'above' : 'below'
+          } >25% threshold)`
+        : `${sign}${dev.deviationPct.toFixed(1)}% (within ±25% range)`;
+    });
+
     const baseVals = visibleDeals.map((d) =>
-      formatCurrencyExact(d.result.breakdown.baseCreationFee)
+      formatCurrencyExact(d.result.breakdown.baseCreationFee, currency)
     );
     const baseNums = visibleDeals.map((d) => d.result.breakdown.baseCreationFee);
     const minBase = Math.min(...baseNums);
 
     const ridersVals = visibleDeals.map((d) =>
-      formatCurrencyExact(d.result.breakdown.totalCommercialRiders)
+      formatCurrencyExact(d.result.breakdown.totalCommercialRiders, currency)
     );
     const ridersNums = visibleDeals.map(
       (d) => d.result.breakdown.totalCommercialRiders
@@ -681,7 +719,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
     });
 
     const netVals = visibleDeals.map((d) =>
-      formatCurrencyExact(d.result.breakdown.estimatedNetAfterSETax)
+      formatCurrencyExact(d.result.breakdown.estimatedNetAfterSETax, currency)
     );
 
     const platformVals = visibleDeals.map(
@@ -695,7 +733,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
       (d) => NICHE_BENCHMARKS[d.profile.niche].label
     );
     const nicheSub = visibleDeals.map(
-      (d) => `$${d.result.breakdown.activeCpm.toFixed(2)} CPM`
+      (d) => `${formatCurrencyExact(d.result.breakdown.activeCpm, currency)} CPM`
     );
 
     const viewsVals = visibleDeals.map(
@@ -713,7 +751,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
     );
 
     const floorVals = visibleDeals.map((d) =>
-      formatCurrencyExact(d.result.breakdown.effectiveFloorCost)
+      formatCurrencyExact(d.result.breakdown.effectiveFloorCost, currency)
     );
 
     const usageVals = visibleDeals.map(
@@ -721,7 +759,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
     );
     const usageSub = visibleDeals.map(
       (d) =>
-        `${formatCurrencyExact(d.result.breakdown.usageRightsFee)} (${(
+        `${formatCurrencyExact(d.result.breakdown.usageRightsFee, currency)} (${(
           d.result.breakdown.usageMultiplier * 100
         ).toFixed(0)}%)`
     );
@@ -733,8 +771,8 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
     );
     const wlSub = visibleDeals.map((d) =>
       d.scope.whitelistingEnabled
-        ? formatCurrencyExact(d.result.breakdown.whitelistingFee)
-        : '$0.00'
+        ? formatCurrencyExact(d.result.breakdown.whitelistingFee, currency)
+        : formatCurrencyExact(0, currency)
     );
 
     const exclVals = visibleDeals.map(
@@ -742,7 +780,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
     );
     const exclSub = visibleDeals.map(
       (d) =>
-        `${formatCurrencyExact(d.result.breakdown.exclusivityFee)} (${(
+        `${formatCurrencyExact(d.result.breakdown.exclusivityFee, currency)} (${(
           d.result.breakdown.exclusivityMultiplier * 100
         ).toFixed(0)}%)`
     );
@@ -754,8 +792,8 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
     );
     const turnSub = visibleDeals.map((d) =>
       d.result.breakdown.rushFee > 0
-        ? `+${formatCurrencyExact(d.result.breakdown.rushFee)}`
-        : '$0.00'
+        ? `+${formatCurrencyExact(d.result.breakdown.rushFee, currency)}`
+        : formatCurrencyExact(0, currency)
     );
 
     const revVals = visibleDeals.map(
@@ -763,23 +801,23 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
     );
     const revSub = visibleDeals.map((d) =>
       d.result.breakdown.excessRevisionsFee > 0
-        ? `+${formatCurrencyExact(d.result.breakdown.excessRevisionsFee)} excess`
+        ? `+${formatCurrencyExact(d.result.breakdown.excessRevisionsFee, currency)} excess`
         : 'Covered in Base Fee'
     );
 
     const tierAVals = visibleDeals.map((d) =>
-      formatCurrencyExact(d.result.tieredPackages.tierA_Organic.fee)
+      formatCurrencyExact(d.result.tieredPackages.tierA_Organic.fee, currency)
     );
     const tierBVals = visibleDeals.map((d) =>
-      formatCurrencyExact(d.result.tieredPackages.tierB_StandardGrowth.fee)
+      formatCurrencyExact(d.result.tieredPackages.tierB_StandardGrowth.fee, currency)
     );
     const tierCVals = visibleDeals.map((d) =>
-      formatCurrencyExact(d.result.tieredPackages.tierC_FullScale.fee)
+      formatCurrencyExact(d.result.tieredPackages.tierC_FullScale.fee, currency)
     );
 
     const projections = visibleDeals.map((d) => calculatePerformanceProjection(d));
     const targetCpaVals = projections.map((p) =>
-      p.targetCpa !== null ? formatCurrencyExact(p.targetCpa) : 'Not set'
+      p.targetCpa !== null ? formatCurrencyExact(p.targetCpa, currency) : 'Not set'
     );
     const targetCpaSub = projections.map((p) =>
       p.breakEvenConversions !== null
@@ -792,7 +830,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
     const projectionSub = projections.map((p) => {
       const cpaStr =
         p.projectedConversions > 0
-          ? `${formatCurrencyExact(p.projectedCpa)} est. CPA`
+          ? `${formatCurrencyExact(p.projectedCpa, currency)} est. CPA`
           : 'No engagement volume';
       if (p.breakEvenConversions !== null && p.requiredEngagementConversionRate !== null) {
         return `${cpaStr} · ${p.requiredEngagementConversionRate.toFixed(1)}% of ${formatNumber(p.totalEngagements)} actions needed`;
@@ -802,7 +840,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
 
     const monthlyRevVals = visibleDeals.map((d) =>
       typeof d.targetMonthlyRevenue === 'number' && d.targetMonthlyRevenue > 0
-        ? formatCurrencyExact(d.targetMonthlyRevenue)
+        ? formatCurrencyExact(d.targetMonthlyRevenue, currency)
         : 'Not set'
     );
     const monthlyRevDealsSub = visibleDeals.map((d) => {
@@ -826,11 +864,19 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
           const delta = n - minTotal;
           if (delta === 0) return 'Lowest total quote';
           const pct = minTotal > 0 ? Math.round((delta / minTotal) * 100) : 0;
-          return `+${formatCurrencyExact(delta)} (+${pct}% vs lowest)`;
+          return `+${formatCurrencyExact(delta, currency)} (+${pct}% vs lowest)`;
         }),
         rawNumbers: totalNums,
         differs: checkDiff(totalVals),
         isPrimaryMetric: true,
+      },
+      {
+        id: 'benchmark_average',
+        section: 'Valuation & Economics',
+        label: 'Niche/Tier Average Benchmark',
+        values: benchVals,
+        subValues: benchSub,
+        differs: checkDiff(benchVals) || benchSub.some((s) => s.includes('>25%')),
       },
       {
         id: 'base_fee',
@@ -842,7 +888,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
           const delta = n - minBase;
           return delta === 0
             ? 'Baseline'
-            : `+${formatCurrencyExact(delta)} vs lowest`;
+            : `+${formatCurrencyExact(delta, currency)} vs lowest`;
         }),
         rawNumbers: baseNums,
         differs: checkDiff(baseVals),
@@ -1000,7 +1046,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
         differs: checkDiff(tierCVals),
       },
     ];
-  }, [visibleDeals]);
+  }, [visibleDeals, currency, benchmarkDeviations]);
 
   const visibleRows = diffOnly ? rows.filter((r) => r.differs) : rows;
   const differingCount = rows.filter((r) => r.differs).length;
@@ -1013,10 +1059,10 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
   ];
 
   const handleCopyComparison = async () => {
-    const md = generateComparisonMarkdown(visibleDeals);
+    const md = generateComparisonMarkdown(visibleDeals, currency);
     try {
       await navigator.clipboard.writeText(md);
-      onNotify('Copied side-by-side comparison table to clipboard.');
+      onNotify(`Copied side-by-side comparison table (${currency}) to clipboard.`);
     } catch {
       onNotify('Unable to access clipboard in this browser context.');
     }
@@ -1082,7 +1128,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
               onSaveCurrentDeal(
                 `${PLATFORM_SPECS[currentProfile.platform].shortLabel} · ${
                   USAGE_RIGHTS_SPECS[currentScope.usageRightsTerm].label.split(' ')[0]
-                } (${formatCurrencyExact(currentResult.breakdown.totalRecommendedRate)})`
+                } (${formatCurrencyExact(currentResult.breakdown.totalRecommendedRate, currency)})`
               )
             }
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 transition-colors cursor-pointer whitespace-nowrap"
@@ -1288,6 +1334,14 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
             </div>
           </section>
 
+          {/* Saved Deals Highlights KPI Strip */}
+          <SavedDealsHighlights
+            deals={visibleDeals.length > 0 ? visibleDeals : savedDeals}
+            totalSavedCount={savedDeals.length}
+            isFiltered={hasActiveFilters && visibleDeals.length > 0}
+            onLoadDealIntoCalculator={onLoadDealIntoCalculator}
+          />
+
           {/* Performance vs Goal Progress Indicator */}
           {allDealsGoalSummary && (
             <section
@@ -1324,7 +1378,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                           Goal Reached (
                           {allDealsGoalSummary.surplus !== null &&
                           allDealsGoalSummary.surplus > 0
-                            ? `+${formatCurrencyExact(allDealsGoalSummary.surplus)} surplus`
+                            ? `+${formatCurrencyExact(allDealsGoalSummary.surplus, currency)} surplus`
                             : '100% funded'}
                           )
                         </span>
@@ -1333,7 +1387,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                       <>
                         <Target className="w-4 h-4 shrink-0" aria-hidden="true" />
                         <span>
-                          {formatCurrencyExact(allDealsGoalSummary.remainingGap ?? 0)} remaining to goal
+                          {formatCurrencyExact(allDealsGoalSummary.remainingGap ?? 0, currency)} remaining to goal
                         </span>
                       </>
                     )}
@@ -1351,10 +1405,10 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                     Sum of All Total Deal Rates
                   </div>
                   <div className="font-mono text-lg font-bold text-slate-900 mt-0.5">
-                    {formatCurrencyExact(allDealsGoalSummary.aggregatedTotalDealRate)}
+                    {formatCurrencyExact(allDealsGoalSummary.aggregatedTotalDealRate, currency)}
                   </div>
                   <div className="text-[11px] font-mono text-slate-500 mt-0.5">
-                    Avg {formatCurrencyExact(allDealsGoalSummary.avgDealRate)} / deal
+                    Avg {formatCurrencyExact(allDealsGoalSummary.avgDealRate, currency)} / deal
                   </div>
                 </div>
 
@@ -1364,7 +1418,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                   </div>
                   <div className="font-mono text-lg font-bold text-slate-900 mt-0.5">
                     {allDealsGoalSummary.targetMonthlyRevenue !== null
-                      ? formatCurrencyExact(allDealsGoalSummary.targetMonthlyRevenue)
+                      ? formatCurrencyExact(allDealsGoalSummary.targetMonthlyRevenue, currency)
                       : 'Not set'}
                   </div>
                   <div className="text-[11px] text-slate-500 mt-0.5">
@@ -1431,7 +1485,8 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                       aria-valuemax={100}
                       aria-valuenow={Math.min(100, Math.round(allDealsGoalSummary.coveragePct))}
                       aria-valuetext={`${allDealsGoalSummary.coveragePct.toFixed(1)}% of ${formatCurrencyExact(
-                        allDealsGoalSummary.targetMonthlyRevenue
+                        allDealsGoalSummary.targetMonthlyRevenue,
+                        currency
                       )} Target Monthly Revenue`}
                       className="h-3 w-full bg-slate-100 border border-slate-200 rounded-full overflow-hidden"
                     >
@@ -1448,12 +1503,12 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-slate-500 tabular-nums">
-                      <span>0% ($0)</span>
+                      <span>0% ({formatCurrency(0, currency)})</span>
                       <span>
-                        50% ({formatCurrency(allDealsGoalSummary.targetMonthlyRevenue * 0.5)})
+                        50% ({formatCurrency(allDealsGoalSummary.targetMonthlyRevenue * 0.5, currency)})
                       </span>
                       <span>
-                        100% ({formatCurrencyExact(allDealsGoalSummary.targetMonthlyRevenue)})
+                        100% ({formatCurrencyExact(allDealsGoalSummary.targetMonthlyRevenue, currency)})
                       </span>
                     </div>
 
@@ -1474,7 +1529,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                             .join(' · ')}
                           ):{' '}
                           <strong className="font-mono text-slate-900">
-                            {formatCurrencyExact(monthlyGoalSummary.aggregatedTotalDealRate)}
+                            {formatCurrencyExact(monthlyGoalSummary.aggregatedTotalDealRate, currency)}
                           </strong>{' '}
                           contributes{' '}
                           <strong className="font-mono text-blue-700">
@@ -1527,6 +1582,77 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
             </div>
           ) : (
             <>
+          {outlierDeals.length > 0 && (
+            <section
+              role="alert"
+              aria-label="Benchmark deviation warning"
+              className="bg-amber-50 border border-amber-300 rounded-xl p-5 space-y-3.5"
+            >
+              <div className="flex items-start gap-3">
+                <AlertTriangle
+                  className="w-5 h-5 text-amber-700 shrink-0 mt-0.5"
+                  aria-hidden="true"
+                />
+                <div className="space-y-1">
+                  <h2 className="font-display text-sm sm:text-base font-bold text-amber-950">
+                    Benchmark Deviation Alert: {outlierDeals.length}{' '}
+                    {outlierDeals.length === 1 ? 'Deal Deviates' : 'Deals Deviate'} &gt;25% From Niche/Tier Average
+                  </h2>
+                  <p className="text-xs text-amber-900 leading-relaxed">
+                    Verify median view counts, custom CPM overrides, or commercial rights riders on flagged proposals to ensure no rate miscalculation against 2026 niche and follower-tier averages.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {outlierDeals.map((deal) => {
+                  const dev = benchmarkDeviations.get(deal.id);
+                  if (!dev) return null;
+                  const sign = dev.deviationPct >= 0 ? '+' : '';
+                  return (
+                    <div
+                      key={`outlier-${deal.id}`}
+                      className="bg-white border border-amber-200 rounded-lg p-3.5 flex flex-col justify-between gap-2.5 text-xs"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="font-display font-semibold text-slate-900 leading-snug">
+                            {deal.name}
+                          </span>
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono font-semibold bg-amber-100 text-amber-950 border border-amber-300 rounded-sm shrink-0">
+                            {sign}
+                            {dev.deviationPct.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-600">
+                          {dev.nicheLabel} · {dev.tierLabel} Tier · {dev.platformLabel}
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 tabular-nums">
+                        <div className="space-y-0.5 font-mono text-[11px]">
+                          <div className="text-slate-900 font-semibold">
+                            Quote: {formatCurrencyExact(deal.result.breakdown.totalRecommendedRate, currency)}
+                          </div>
+                          <div className="text-slate-500">
+                            Benchmark: {formatCurrencyExact(dev.averageBenchmark, currency)}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onLoadDealIntoCalculator(deal)}
+                          className="px-2.5 py-1 text-[11px] font-medium text-amber-950 bg-amber-100 hover:bg-amber-200 rounded-md transition-colors cursor-pointer shrink-0"
+                        >
+                          Verify Metrics
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
           {/* Visualizations Grid: Side-by-Side Bar Chart + Chronological Rate Trend */}
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
             {/* Side-by-Side Total Fees Bar Chart */}
@@ -1585,15 +1711,15 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                     tickLine={false}
                   />
                   <YAxis
-                    tickFormatter={(val: number) => formatCurrency(val)}
+                    tickFormatter={(val: number) => formatCurrency(val, currency)}
                     tick={{ fill: '#64748B', fontSize: 11, fontFamily: 'IBM Plex Mono, monospace' }}
                     axisLine={false}
                     tickLine={false}
                     width={76}
                   />
                   <Tooltip
-                    content={<DealChartTooltip />}
-                    formatter={(value) => formatCurrencyExact(Number(value ?? 0))}
+                    content={<DealChartTooltip currency={currency} />}
+                    formatter={(value) => formatCurrencyExact(Number(value ?? 0), currency)}
                     labelFormatter={(_label, payload) =>
                       payload?.[0]?.payload?.name ?? ''
                     }
@@ -1611,7 +1737,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                         dataKey="totalFee"
                         position="top"
                         formatter={(val: unknown) =>
-                          typeof val === 'number' ? formatCurrencyExact(val) : ''
+                          typeof val === 'number' ? formatCurrencyExact(val, currency) : ''
                         }
                         style={{
                           fill: '#0F172A',
@@ -1647,7 +1773,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                           dataKey="totalFee"
                           position="top"
                           formatter={(val: unknown) =>
-                            typeof val === 'number' ? formatCurrencyExact(val) : ''
+                            typeof val === 'number' ? formatCurrencyExact(val, currency) : ''
                           }
                           style={{
                             fill: '#0F172A',
@@ -1701,7 +1827,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                         </span>
                         <span className="font-mono">
                           ({trendSummary.delta > 0 ? '+' : ''}
-                          {formatCurrencyExact(trendSummary.delta)} /{' '}
+                          {formatCurrencyExact(trendSummary.delta, currency)} /{' '}
                           {trendSummary.pct > 0 ? '+' : ''}
                           {trendSummary.pct.toFixed(0)}%)
                         </span>
@@ -1761,7 +1887,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                       tickLine={false}
                     />
                     <YAxis
-                      tickFormatter={(val: number) => formatCurrency(val)}
+                      tickFormatter={(val: number) => formatCurrency(val, currency)}
                       tick={{
                         fill: '#64748B',
                         fontSize: 11,
@@ -1772,7 +1898,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                       width={76}
                     />
                     <Tooltip
-                      content={<TrendChartTooltip />}
+                      content={<TrendChartTooltip currency={currency} />}
                       cursor={{ stroke: '#94A3B8', strokeDasharray: '3 3' }}
                     />
                     {trendData.length >= 2 && monthlyGoalSummary && (
@@ -1781,7 +1907,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                         stroke="#94A3B8"
                         strokeDasharray="4 4"
                         label={{
-                          value: `Avg ${formatCurrency(monthlyGoalSummary.avgDealRate)}`,
+                          value: `Avg ${formatCurrency(monthlyGoalSummary.avgDealRate, currency)}`,
                           position: 'insideTopRight',
                           fill: '#64748B',
                           fontSize: 11,
@@ -1820,7 +1946,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                         position="top"
                         offset={10}
                         formatter={(val: unknown) =>
-                          typeof val === 'number' ? formatCurrency(val) : ''
+                          typeof val === 'number' ? formatCurrency(val, currency) : ''
                         }
                         style={{
                           fill: '#0F172A',
@@ -1858,6 +1984,12 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
               </div>
             </section>
           </div>
+
+          {/* Deal Pipeline Timeline Visualizer */}
+          <DealPipelineTimeline
+            deals={visibleDeals}
+            onLoadDealIntoCalculator={onLoadDealIntoCalculator}
+          />
 
           {/* AI Negotiating Coach */}
           <NegotiationCoachPanel deals={visibleDeals} onNotify={onNotify} />
@@ -1963,7 +2095,22 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                         <td
                           className={`py-3.5 px-4 align-top text-right font-mono font-semibold whitespace-nowrap transition-colors ${density.cellClass} ${density.textClass}`}
                         >
-                          {formatCurrencyExact(deal.result.breakdown.totalRecommendedRate)}
+                          <div>
+                            {formatCurrencyExact(deal.result.breakdown.totalRecommendedRate, currency)}
+                          </div>
+                          {(() => {
+                            const dev = benchmarkDeviations.get(deal.id);
+                            if (!dev || !dev.isOutlier) return null;
+                            return (
+                              <div className="mt-1.5 flex justify-end">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-sans font-semibold bg-amber-100 text-amber-950 border border-amber-300 rounded-sm">
+                                  <AlertTriangle className="w-3 h-3 text-amber-700 shrink-0" aria-hidden="true" />
+                                  {dev.deviationPct >= 0 ? '+' : ''}
+                                  {dev.deviationPct.toFixed(0)}% vs bench
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="py-3.5 px-4 align-top text-right whitespace-nowrap">
                           <div className="font-mono font-medium text-slate-900">
@@ -2009,7 +2156,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                 }`}
                               >
                                 {proj.targetCpa !== null
-                                  ? formatCurrencyExact(proj.targetCpa)
+                                  ? formatCurrencyExact(proj.targetCpa, currency)
                                   : 'Not set'}
                               </span>
                               <button
@@ -2065,7 +2212,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                   }`}
                                 >
                                   {revGoal !== null
-                                    ? formatCurrencyExact(revGoal)
+                                    ? formatCurrencyExact(revGoal, currency)
                                     : 'Not set'}
                                 </span>
                                 <button
@@ -2098,7 +2245,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                             </span>
                             {proj.projectedConversions > 0 && (
                               <span className="text-xs font-mono text-slate-600">
-                                ({formatCurrencyExact(proj.projectedCpa)} est. CPA)
+                                ({formatCurrencyExact(proj.projectedCpa, currency)} est. CPA)
                               </span>
                             )}
                             {proj.meetsTargetCpa !== null && (
@@ -2114,7 +2261,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                           {proj.breakEvenConversions !== null && proj.targetCpa !== null ? (
                             <div className="text-[11px] text-slate-500 mt-0.5 font-mono">
                               Break-even: {formatNumber(proj.breakEvenConversions)} conversions @{' '}
-                              {formatCurrencyExact(proj.targetCpa)} Target CPA
+                              {formatCurrencyExact(proj.targetCpa, currency)} Target CPA
                               {proj.requiredEngagementConversionRate !== null &&
                                 ` (${proj.requiredEngagementConversionRate.toFixed(1)}% of engagements)`}
                             </div>
@@ -2143,10 +2290,10 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                       </td>
                       <td className="py-3.5 px-4 align-top text-right whitespace-nowrap">
                         <div className="font-mono font-bold text-slate-900">
-                          {formatCurrencyExact(monthlyGoalSummary.aggregatedTotalDealRate)}
+                          {formatCurrencyExact(monthlyGoalSummary.aggregatedTotalDealRate, currency)}
                         </div>
                         <div className="text-[11px] font-mono text-slate-500">
-                          Avg {formatCurrencyExact(monthlyGoalSummary.avgDealRate)}/deal
+                          Avg {formatCurrencyExact(monthlyGoalSummary.avgDealRate, currency)}/deal
                         </div>
                       </td>
                       <td className="py-3.5 px-4 align-top text-right text-slate-500 font-mono whitespace-nowrap">
@@ -2159,7 +2306,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                         {monthlyGoalSummary.targetMonthlyRevenue !== null ? (
                           <div>
                             <div className="font-mono font-bold text-slate-900">
-                              {formatCurrencyExact(monthlyGoalSummary.targetMonthlyRevenue)}/mo
+                              {formatCurrencyExact(monthlyGoalSummary.targetMonthlyRevenue, currency)}/mo
                             </div>
                             <div className="text-[11px] text-slate-500">
                               {monthlyGoalSummary.hasMixedGoals
@@ -2187,12 +2334,12 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                               /mo needed at avg rate ({monthlyGoalSummary.exactDealsAtAvgRate.toFixed(1)}x)
                             </div>
                             <div className="text-[11px] text-slate-600 mt-0.5 font-mono">
-                              Combined saved deals ({formatCurrencyExact(monthlyGoalSummary.aggregatedTotalDealRate)}) cover{' '}
+                              Combined saved deals ({formatCurrencyExact(monthlyGoalSummary.aggregatedTotalDealRate, currency)}) cover{' '}
                               {monthlyGoalSummary.coveragePct.toFixed(0)}% of{' '}
-                              {formatCurrencyExact(monthlyGoalSummary.targetMonthlyRevenue)} goal
+                              {formatCurrencyExact(monthlyGoalSummary.targetMonthlyRevenue, currency)} goal
                               {monthlyGoalSummary.remainingGap !== null &&
                               monthlyGoalSummary.remainingGap > 0
-                                ? ` · ${formatCurrencyExact(monthlyGoalSummary.remainingGap)} gap remaining`
+                                ? ` · ${formatCurrencyExact(monthlyGoalSummary.remainingGap, currency)} gap remaining`
                                 : ' · Monthly target reached'}
                             </div>
                           </div>
@@ -2331,6 +2478,20 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                           <span className="mx-1">·</span>
                           {deal.result.followerTier.label}
                         </div>
+
+                        {(() => {
+                          const dev = benchmarkDeviations.get(deal.id);
+                          if (!dev || !dev.isOutlier) return null;
+                          return (
+                            <div className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium bg-amber-100 text-amber-950 border border-amber-300 rounded-sm">
+                              <AlertTriangle className="w-3 h-3 text-amber-700 shrink-0" aria-hidden="true" />
+                              <span>
+                                {dev.deviationPct >= 0 ? '+' : ''}
+                                {dev.deviationPct.toFixed(1)}% vs. Benchmark
+                              </span>
+                            </div>
+                          );
+                        })()}
 
                         {deal.tags && deal.tags.length > 0 && (
                           <div className="flex flex-wrap items-center gap-1">
@@ -2642,7 +2803,13 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                           </th>
 
                           {row.values.map((val, idx) => {
+                            const deal = visibleDeals[idx];
                             const isPrimaryRateRow = row.id === 'total_rate';
+                            const isBenchmarkRow = row.id === 'benchmark_average';
+                            const dev = benchmarkDeviations.get(deal.id);
+                            const isBenchmarkOutlierCell = Boolean(
+                              isBenchmarkRow && dev?.isOutlier
+                            );
                             const isHighestTotal =
                               row.isPrimaryMetric &&
                               row.rawNumbers &&
@@ -2662,9 +2829,13 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
 
                             return (
                               <td
-                                key={`${row.id}-${visibleDeals[idx].id}`}
+                                key={`${row.id}-${deal.id}`}
                                 className={`p-4 align-top border-r last:border-r-0 border-slate-100 tabular-nums transition-colors ${
-                                  density ? density.cellClass : ''
+                                  density
+                                    ? density.cellClass
+                                    : isBenchmarkOutlierCell
+                                    ? 'bg-amber-50'
+                                    : ''
                                 }`}
                               >
                                 <div
@@ -2679,23 +2850,33 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                     row.section === 'Valuation & Economics'
                                       ? 'font-mono'
                                       : ''
-                                  }`}
+                                  } flex flex-wrap items-center gap-1.5`}
                                 >
-                                  {val}
+                                  <span>{val}</span>
                                   {isHighestTotal && (
                                     <span
-                                      className={`ml-2 text-[11px] font-sans font-semibold ${
+                                      className={`text-[11px] font-sans font-semibold ${
                                         density ? density.badgeTextClass : 'text-blue-700'
                                       }`}
                                     >
                                       Highest
                                     </span>
                                   )}
+                                  {isBenchmarkOutlierCell && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-sans font-semibold bg-amber-100 text-amber-950 border border-amber-300 rounded-sm">
+                                      <AlertTriangle className="w-3 h-3 text-amber-700 shrink-0" aria-hidden="true" />
+                                      &gt;25% deviation
+                                    </span>
+                                  )}
                                 </div>
                                 {row.subValues && row.subValues[idx] && (
                                   <div
                                     className={`text-[11px] mt-0.5 font-mono ${
-                                      density ? density.subTextClass : 'text-slate-500'
+                                      density
+                                        ? density.subTextClass
+                                        : isBenchmarkOutlierCell
+                                        ? 'text-amber-900 font-semibold'
+                                        : 'text-slate-500'
                                     }`}
                                   >
                                     {row.subValues[idx]}
@@ -2733,12 +2914,12 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                             {visibleDeals.length === 1 ? 'deal' : 'deals'}):{' '}
                           </span>
                           <strong className="font-mono text-slate-900">
-                            {formatCurrencyExact(monthlyGoalSummary.aggregatedTotalDealRate)}
+                            {formatCurrencyExact(monthlyGoalSummary.aggregatedTotalDealRate, currency)}
                           </strong>
                           <span className="text-slate-400 mx-2">·</span>
                           <span className="text-xs text-slate-500">Avg Rate: </span>
                           <strong className="font-mono text-slate-900">
-                            {formatCurrencyExact(monthlyGoalSummary.avgDealRate)}
+                            {formatCurrencyExact(monthlyGoalSummary.avgDealRate, currency)}
                           </strong>
                         </div>
 
@@ -2751,7 +2932,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                               ? 'deal'
                               : 'deals'}
                             /mo needed to reach{' '}
-                            {formatCurrencyExact(monthlyGoalSummary.targetMonthlyRevenue)}{' '}
+                            {formatCurrencyExact(monthlyGoalSummary.targetMonthlyRevenue, currency)}{' '}
                             ({monthlyGoalSummary.coveragePct.toFixed(0)}% covered by combined deals)
                           </div>
                         ) : (

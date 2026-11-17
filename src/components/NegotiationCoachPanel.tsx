@@ -1,12 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   Check,
   CheckSquare,
   Copy,
   Loader2,
+  Mail,
   MessageSquareQuote,
   RefreshCw,
+  RotateCcw,
   Sparkles,
   Square,
 } from 'lucide-react';
@@ -19,8 +21,14 @@ import {
 import {
   NegotiationCoachAnalysis,
   NegotiationCoachFocus,
+  OutreachEmailTemplateId,
   SavedDealSnapshot,
 } from '../types/calculator';
+import { useCurrency } from '../context/CurrencyContext';
+import {
+  generateSponsorOutreachEmail,
+  OUTREACH_TEMPLATE_OPTIONS,
+} from '../utils/outreachEmailGenerator';
 import { formatCurrencyExact } from '../utils/pricingEngine';
 
 interface NegotiationCoachPanelProps {
@@ -59,6 +67,7 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
   deals,
   onNotify,
 }) => {
+  const { currency, currencySpec } = useCurrency();
   const [selectedIds, setSelectedIds] = useState<string[]>(() =>
     deals.slice(0, Math.min(3, deals.length)).map((d) => d.id)
   );
@@ -68,6 +77,22 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
   const [analysis, setAnalysis] = useState<NegotiationCoachAnalysis | null>(null);
   const [analyzedSignature, setAnalyzedSignature] = useState<string | null>(null);
   const [copiedScriptIdx, setCopiedScriptIdx] = useState<number | null>(null);
+
+  // Sponsor Outreach Email Composer State
+  const outreachSectionRef = useRef<HTMLDivElement | null>(null);
+  const [emailTargetDealId, setEmailTargetDealId] = useState<string>(() => {
+    const withNotes = deals.find((d) => d.notes && d.notes.trim().length > 0);
+    return (withNotes ?? deals[0])?.id ?? '';
+  });
+  const [emailTemplateId, setEmailTemplateId] =
+    useState<OutreachEmailTemplateId>('counter_offer');
+  const [brandName, setBrandName] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [creatorName, setCreatorName] = useState('');
+  const [editedSubject, setEditedSubject] = useState('');
+  const [editedBody, setEditedBody] = useState('');
+  const [hasManualEmailEdit, setHasManualEmailEdit] = useState(false);
+  const [copiedEmailType, setCopiedEmailType] = useState<'full' | 'body' | 'subject' | null>(null);
 
   // Keep selectedIds synced with currently available deals
   useEffect(() => {
@@ -93,10 +118,66 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
     [deals, selectedIds]
   );
 
+  // Keep emailTargetDealId synced with available deals
+  useEffect(() => {
+    if (deals.length === 0) {
+      setEmailTargetDealId('');
+      return;
+    }
+    const stillValid = deals.some((d) => d.id === emailTargetDealId);
+    if (!stillValid) {
+      const pool = selectedDeals.length > 0 ? selectedDeals : deals;
+      const withNotes = pool.find((d) => d.notes && d.notes.trim().length > 0);
+      setEmailTargetDealId((withNotes ?? pool[0]).id);
+    }
+  }, [deals, selectedDeals, emailTargetDealId]);
+
+  const emailTargetDeal = useMemo(
+    () => deals.find((d) => d.id === emailTargetDealId) ?? selectedDeals[0] ?? deals[0] ?? null,
+    [deals, selectedDeals, emailTargetDealId]
+  );
+
+  const generatedOutreach = useMemo(() => {
+    if (!emailTargetDeal) return null;
+    const effectiveTemplate: OutreachEmailTemplateId =
+      emailTemplateId === 'ai_coach_draft' && !analysis?.outreachEmail
+        ? 'counter_offer'
+        : emailTemplateId;
+    return generateSponsorOutreachEmail({
+      templateId: effectiveTemplate,
+      targetDeal: emailTargetDeal,
+      comparisonDeals: selectedDeals.length > 0 ? selectedDeals : deals,
+      focus,
+      analysis,
+      brandName,
+      contactName,
+      creatorName,
+      currency,
+    });
+  }, [
+    emailTargetDeal,
+    emailTemplateId,
+    selectedDeals,
+    deals,
+    focus,
+    analysis,
+    brandName,
+    contactName,
+    creatorName,
+    currency,
+  ]);
+
+  useEffect(() => {
+    if (!generatedOutreach || hasManualEmailEdit) return;
+    setEditedSubject(generatedOutreach.subject);
+    setEditedBody(generatedOutreach.body);
+  }, [generatedOutreach, hasManualEmailEdit]);
+
   const currentSignature = useMemo(
     () =>
       JSON.stringify({
         focus,
+        currency,
         deals: selectedDeals.map((d) => ({
           id: d.id,
           rate: d.result.breakdown.totalRecommendedRate,
@@ -104,7 +185,7 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
           tags: d.tags ?? [],
         })),
       }),
-    [focus, selectedDeals]
+    [focus, currency, selectedDeals]
   );
 
   const isStale = Boolean(
@@ -182,6 +263,11 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
         body: JSON.stringify({
           deals: payloadDeals,
           focus,
+          currency: {
+            code: currencySpec.code,
+            rateFromUsd: currencySpec.rateFromUsd,
+            decimals: currencySpec.decimals,
+          },
         }),
       });
 
@@ -194,8 +280,12 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
         throw new Error(message);
       }
 
-      setAnalysis(data as NegotiationCoachAnalysis);
+      const typedAnalysis = data as NegotiationCoachAnalysis;
+      setAnalysis(typedAnalysis);
       setAnalyzedSignature(currentSignature);
+      if (typedAnalysis.outreachEmail && !hasManualEmailEdit) {
+        setEmailTemplateId('ai_coach_draft');
+      }
     } catch (err: unknown) {
       const msg =
         err instanceof Error
@@ -223,11 +313,11 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
   const handleCopyBrief = async () => {
     if (!analysis) return;
     const lines: string[] = [
-      '# AI Negotiating Coach Brief',
+      `# AI Negotiating Coach Brief (${currency})`,
       '',
       `**Compared Deals (${selectedDeals.length}):** ${selectedDeals.map((d) => d.name).join(' vs. ')}`,
-      `**Recommended Anchor:** ${formatCurrencyExact(analysis.counterOfferRecommendation.recommendedAnchorRate)}`,
-      `**Walk-Away Floor:** ${formatCurrencyExact(analysis.counterOfferRecommendation.recommendedFloorRate)}`,
+      `**Recommended Anchor:** ${formatCurrencyExact(analysis.counterOfferRecommendation.recommendedAnchorRate, currency)}`,
+      `**Walk-Away Floor:** ${formatCurrencyExact(analysis.counterOfferRecommendation.recommendedFloorRate, currency)}`,
       '',
       '## Executive Assessment',
       analysis.executiveSummary,
@@ -256,6 +346,45 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
     }
   };
 
+  const handleCopyOutreachEmail = async (mode: 'full' | 'body' | 'subject') => {
+    const subjectText = editedSubject.trim() || generatedOutreach?.subject || '';
+    const bodyText = editedBody.trim() || generatedOutreach?.body || '';
+    if (!subjectText && !bodyText) return;
+
+    const payload =
+      mode === 'subject'
+        ? subjectText
+        : mode === 'body'
+        ? bodyText
+        : `Subject: ${subjectText}\n\n${bodyText}`;
+
+    const label =
+      mode === 'subject'
+        ? 'email subject line'
+        : mode === 'body'
+        ? 'email body'
+        : 'sponsor outreach email';
+
+    try {
+      await navigator.clipboard.writeText(payload);
+      setCopiedEmailType(mode);
+      onNotify(`Copied ${label} to clipboard.`);
+      window.setTimeout(() => {
+        setCopiedEmailType((prev) => (prev === mode ? null : prev));
+      }, 2000);
+    } catch {
+      onNotify('Unable to access clipboard in this browser context.');
+    }
+  };
+
+  const handleResetOutreachDraft = () => {
+    if (!generatedOutreach) return;
+    setHasManualEmailEdit(false);
+    setEditedSubject(generatedOutreach.subject);
+    setEditedBody(generatedOutreach.body);
+    onNotify('Refreshed outreach email from template & deal notes.');
+  };
+
   return (
     <section
       aria-label="AI Negotiating Coach"
@@ -276,11 +405,26 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {deals.length > 0 && (
+            <button
+              type="button"
+              onClick={() =>
+                outreachSectionRef.current?.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'start',
+                })
+              }
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <Mail className="w-3.5 h-3.5 text-blue-700" aria-hidden="true" />
+              Outreach Email
+            </button>
+          )}
           {analysis && (
             <button
               type="button"
               onClick={handleCopyBrief}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap shrink-0"
             >
               <Copy className="w-3.5 h-3.5" aria-hidden="true" />
               Copy Brief
@@ -329,10 +473,10 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                   <span className="font-mono text-slate-600 tabular-nums">
                     Rate spread:{' '}
                     <strong className="text-slate-900">
-                      {formatCurrencyExact(selectionSummary.spread)}
+                      {formatCurrencyExact(selectionSummary.spread, currency)}
                     </strong>{' '}
-                    ({formatCurrencyExact(selectionSummary.minRate)} →{' '}
-                    {formatCurrencyExact(selectionSummary.maxRate)}) ·{' '}
+                    ({formatCurrencyExact(selectionSummary.minRate, currency)} →{' '}
+                    {formatCurrencyExact(selectionSummary.maxRate, currency)}) ·{' '}
                     {selectionSummary.notesCount}/{selectedDeals.length} with notes
                   </span>
                 )}
@@ -367,13 +511,13 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                             {deal.name}
                           </span>
                           <span className="font-mono text-xs font-bold text-slate-900 shrink-0 tabular-nums">
-                            {formatCurrencyExact(deal.result.breakdown.totalRecommendedRate)}
+                            {formatCurrencyExact(deal.result.breakdown.totalRecommendedRate, currency)}
                           </span>
                         </div>
                         <div className="text-[11px] text-slate-500 font-mono tabular-nums">
                           {PLATFORM_SPECS[deal.profile.platform].shortLabel} · Base{' '}
-                          {formatCurrencyExact(deal.result.breakdown.baseCreationFee)} · Riders{' '}
-                          {formatCurrencyExact(deal.result.breakdown.totalCommercialRiders)}
+                          {formatCurrencyExact(deal.result.breakdown.baseCreationFee, currency)} · Riders{' '}
+                          {formatCurrencyExact(deal.result.breakdown.totalCommercialRiders, currency)}
                         </div>
                         {deal.tags && deal.tags.length > 0 && (
                           <div className="flex flex-wrap items-center gap-1">
@@ -504,7 +648,8 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                 </div>
                 <div className="font-mono text-xl font-bold text-blue-900 mt-1">
                   {formatCurrencyExact(
-                    analysis.counterOfferRecommendation.recommendedAnchorRate
+                    analysis.counterOfferRecommendation.recommendedAnchorRate,
+                    currency
                   )}
                 </div>
                 <div className="text-[11px] text-blue-800 mt-1">
@@ -518,7 +663,8 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                 </div>
                 <div className="font-mono text-xl font-bold text-slate-900 mt-1">
                   {formatCurrencyExact(
-                    analysis.counterOfferRecommendation.recommendedFloorRate
+                    analysis.counterOfferRecommendation.recommendedFloorRate,
+                    currency
                   )}
                 </div>
                 <div className="text-[11px] text-slate-600 mt-1">
@@ -611,6 +757,315 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Brand Sponsor Outreach Email Composer */}
+      {emailTargetDeal && generatedOutreach && (
+        <div
+          ref={outreachSectionRef}
+          className="p-5 sm:p-6 border-t border-slate-200 bg-slate-50/40 space-y-4 scroll-mt-24"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="inline-flex items-center gap-2">
+                <Mail className="w-4 h-4 text-blue-700 shrink-0" aria-hidden="true" />
+                <h3 className="font-display text-sm sm:text-base font-semibold text-slate-900">
+                  Brand Sponsor Outreach Email Generator
+                </h3>
+              </div>
+              <p className="text-xs text-slate-600 mt-0.5">
+                Synthesizes your deal notes, rate calculations, and AI Negotiating Coach posture into a copy-ready sponsor email.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600 font-mono tabular-nums">
+              <span>
+                Anchor:{' '}
+                <strong className="text-slate-900">
+                  {formatCurrencyExact(generatedOutreach.anchorRateUsd, currency)}
+                </strong>
+              </span>
+              <span aria-hidden="true">·</span>
+              <span>
+                Floor:{' '}
+                <strong className="text-slate-900">
+                  {formatCurrencyExact(generatedOutreach.floorRateUsd, currency)}
+                </strong>
+              </span>
+              <span aria-hidden="true">·</span>
+              <span className="font-sans">
+                {generatedOutreach.usedNotes ? 'Uses deal notes' : 'No notes on deal'}
+              </span>
+            </div>
+          </div>
+
+          {/* Target Deal + Personalization Controls */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div>
+              <label
+                htmlFor="outreach-target-deal"
+                className="block text-[11px] font-semibold text-slate-700 mb-1"
+              >
+                Target Deal Scenario
+              </label>
+              <select
+                id="outreach-target-deal"
+                value={emailTargetDeal.id}
+                onChange={(e) => {
+                  setEmailTargetDealId(e.target.value);
+                  setHasManualEmailEdit(false);
+                }}
+                className="w-full px-2.5 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-blue-600"
+              >
+                {deals.map((d) => (
+                  <option key={`outreach-opt-${d.id}`} value={d.id}>
+                    {d.name} ({formatCurrencyExact(d.result.breakdown.totalRecommendedRate, currency)})
+                    {d.notes?.trim() ? ' · Notes' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor="outreach-brand-name"
+                className="block text-[11px] font-semibold text-slate-700 mb-1"
+              >
+                Brand Sponsor Name
+              </label>
+              <input
+                id="outreach-brand-name"
+                type="text"
+                value={brandName}
+                onChange={(e) => setBrandName(e.target.value)}
+                placeholder="e.g., Acme FinTech"
+                className="w-full px-2.5 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="outreach-contact-name"
+                className="block text-[11px] font-semibold text-slate-700 mb-1"
+              >
+                Sponsor Contact (Optional)
+              </label>
+              <input
+                id="outreach-contact-name"
+                type="text"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+                placeholder="e.g., Sarah"
+                className="w-full px-2.5 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="outreach-creator-name"
+                className="block text-[11px] font-semibold text-slate-700 mb-1"
+              >
+                Your Name
+              </label>
+              <input
+                id="outreach-creator-name"
+                type="text"
+                value={creatorName}
+                onChange={(e) => setCreatorName(e.target.value)}
+                placeholder="e.g., Alex Rivera"
+                className="w-full px-2.5 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600"
+              />
+            </div>
+          </div>
+
+          {/* Template Selector */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+            <div
+              role="group"
+              aria-label="Outreach email template style"
+              className="flex flex-wrap items-center gap-1.5"
+            >
+              {analysis?.outreachEmail && (
+                <button
+                  type="button"
+                  aria-pressed={emailTemplateId === 'ai_coach_draft'}
+                  onClick={() => {
+                    setEmailTemplateId('ai_coach_draft');
+                    setHasManualEmailEdit(false);
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                    emailTemplateId === 'ai_coach_draft'
+                      ? 'bg-blue-700 text-white border-blue-700'
+                      : 'bg-white text-blue-800 border-blue-300 hover:bg-blue-50'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                  AI Coach Custom Draft
+                </button>
+              )}
+
+              {OUTREACH_TEMPLATE_OPTIONS.map((tpl) => {
+                const active =
+                  emailTemplateId === tpl.id ||
+                  (emailTemplateId === 'ai_coach_draft' &&
+                    !analysis?.outreachEmail &&
+                    tpl.id === 'counter_offer');
+                return (
+                  <button
+                    key={tpl.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => {
+                      setEmailTemplateId(tpl.id);
+                      setHasManualEmailEdit(false);
+                    }}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                      active
+                        ? 'bg-slate-900 text-white border-slate-900'
+                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    {tpl.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {hasManualEmailEdit && (
+              <button
+                type="button"
+                onClick={handleResetOutreachDraft}
+                className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:text-blue-800 cursor-pointer whitespace-nowrap shrink-0"
+              >
+                <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
+                Reset to Template
+              </button>
+            )}
+          </div>
+
+          {/* Deal Notes & Coach Context Strip */}
+          <div className="px-3.5 py-2.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 flex flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <span className="font-semibold text-slate-800">Deal Notes Input: </span>
+              {emailTargetDeal.notes?.trim() ? (
+                <span className="text-slate-700">{emailTargetDeal.notes.trim()}</span>
+              ) : (
+                <span className="italic text-slate-500">
+                  No notes saved on &ldquo;{emailTargetDeal.name}&rdquo; yet — add negotiation notes in the matrix below to weave specific brand feedback into this email.
+                </span>
+              )}
+            </div>
+            <div className="text-[11px] text-slate-500 shrink-0">
+              Posture: <strong className="text-slate-700">{FOCUS_OPTIONS.find((f) => f.id === focus)?.label}</strong>
+              {analysis ? ' · Enriched with AI Coach' : ''}
+            </div>
+          </div>
+
+          {/* Editable Email Subject & Body */}
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-2">
+              <label htmlFor="outreach-subject" className="sr-only">
+                Email Subject
+              </label>
+              <div className="flex-1 flex items-center bg-white border border-slate-300 rounded-lg px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-600/15">
+                <span className="text-xs font-semibold text-slate-500 mr-2 shrink-0">
+                  Subject:
+                </span>
+                <input
+                  id="outreach-subject"
+                  type="text"
+                  value={editedSubject}
+                  onChange={(e) => {
+                    setEditedSubject(e.target.value);
+                    setHasManualEmailEdit(true);
+                  }}
+                  className="w-full text-xs sm:text-sm font-medium text-slate-900 bg-transparent focus:outline-none"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => handleCopyOutreachEmail('subject')}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              >
+                {copiedEmailType === 'subject' ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-700" aria-hidden="true" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" aria-hidden="true" />
+                    Copy Subject
+                  </>
+                )}
+              </button>
+            </div>
+
+            <label htmlFor="outreach-body" className="sr-only">
+              Sponsor Outreach Email Body
+            </label>
+            <textarea
+              id="outreach-body"
+              rows={13}
+              value={editedBody}
+              onChange={(e) => {
+                setEditedBody(e.target.value);
+                setHasManualEmailEdit(true);
+              }}
+              className="w-full p-3.5 bg-white border border-slate-300 rounded-lg text-xs sm:text-[13px] text-slate-800 leading-relaxed focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15 resize-y"
+            />
+          </div>
+
+          {/* Copy Footer */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="text-[11px] text-slate-500">
+              {hasManualEmailEdit
+                ? 'Custom edits active — click Reset to Template to re-sync with deal changes.'
+                : analysis
+                ? 'Populated with AI Negotiating Coach discrepancies, anchor targets, and deal notes.'
+                : deals.length >= 2
+                ? 'Populated with Coach posture logic and deal notes. Run Generate Talking Points above for AI-synthesized custom copy.'
+                : 'Populated with Coach posture logic, rate breakdown, and deal notes.'}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleCopyOutreachEmail('body')}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              >
+                {copiedEmailType === 'body' ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-700" aria-hidden="true" />
+                    Copied Body
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" aria-hidden="true" />
+                    Copy Body Only
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCopyOutreachEmail('full')}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              >
+                {copiedEmailType === 'full' ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
+                    Copied Outreach Email
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" aria-hidden="true" />
+                    Copy Full Email
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

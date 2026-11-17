@@ -127,6 +127,53 @@ export interface ContractClause {
   replacementText: string;
 }
 
+export type ContractRiskLevel = 'low' | 'moderate' | 'high' | 'critical';
+
+export interface ContractRiskAssessment {
+  score: number; // 1 to 100
+  level: ContractRiskLevel;
+  levelLabel: string;
+  summary: string;
+  criticalCount: number;
+  warningCount: number;
+  flaggedCount: number;
+  categoryBreakdown: Array<{
+    category: ClauseCategory;
+    flaggedCount: number;
+    totalCount: number;
+    weightPoints: number;
+  }>;
+  topDrivers: Array<{
+    clauseId: number;
+    clauseTitle: string;
+    category: ClauseCategory;
+    severity: 'warning' | 'critical';
+    weightPoints: number;
+  }>;
+}
+
+export interface LegalLibraryEntry {
+  id: string;
+  term: string;
+  aliases: string[];
+  category: ClauseCategory;
+  relatedClauseId: number;
+  standardDefinition: string;
+  balancedStandard: string;
+}
+
+export interface LegalTermAuditEvaluation {
+  entry: LegalLibraryEntry;
+  clause: ContractClause;
+  isFlaggedInAudit: boolean;
+  standaloneScore: number;
+  standaloneLevel: ContractRiskLevel;
+  standaloneLevelLabel: string;
+  clauseWeightPoints: number;
+  projectedAuditScoreIfFlagged: number;
+  auditScoreDelta: number;
+}
+
 export type EmailScenarioId =
   | 'three_tier_anchor'
   | 'lowball_pushback'
@@ -167,6 +214,22 @@ export interface PerformanceProjection {
   meetsTargetCpa: boolean | null;
 }
 
+export interface CampaignRoiEstimate {
+  dealRateUsd: number;
+  targetCpaUsd: number;
+  avgOrderValueUsd: number;
+  unitsAtTargetCpa: number;
+  revenueAtTargetCpa: number;
+  roasAtTargetCpa: number;
+  projectedUnitsSold: number;
+  projectedRevenue: number;
+  projectedRoas: number;
+  projectedCpaUsd: number;
+  engagementCaptureRate: number;
+  totalEngagements: number;
+  meetsTargetCpa: boolean;
+}
+
 export type AppView = 'workbench' | 'comparison';
 
 export type NegotiationCoachFocus =
@@ -188,6 +251,18 @@ export interface NegotiationCoachTalkingPoint {
   scriptQuote: string;
 }
 
+export type OutreachEmailTemplateId =
+  | 'ai_coach_draft'
+  | 'counter_offer'
+  | 'tiered_pitch'
+  | 'rights_exclusivity'
+  | 'closing_followup';
+
+export interface NegotiationCoachOutreachEmail {
+  subject: string;
+  body: string;
+}
+
 export interface NegotiationCoachAnalysis {
   executiveSummary: string;
   keyDiscrepancies: NegotiationCoachDiscrepancy[];
@@ -197,4 +272,30 @@ export interface NegotiationCoachAnalysis {
     recommendedFloorRate: number;
     concessionPlaybook: string;
   };
+  outreachEmail?: NegotiationCoachOutreachEmail;
 }
+
+export type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD' | 'JPY' | 'INR';
+
+export type PlanTier = 'free' | 'pro';
+
+export interface CurrencySpec {
+  code: CurrencyCode;
+  symbol: string;
+  name: string;
+  rateFromUsd: number;
+  decimals: number;
+  tier: PlanTier;
+}
+
+export interface BenchmarkDeviation {
+  averageBenchmark: number;
+  tierLabel: string;
+  nicheLabel: string;
+  platformLabel: string;
+  deviationAmount: number;
+  deviationPct: number;
+  isOutlier: boolean;
+  direction: 'above' | 'below' | 'aligned';
+}
+

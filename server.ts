@@ -42,6 +42,11 @@ interface CoachDealPayload {
 interface CoachRequestBody {
   deals?: CoachDealPayload[];
   focus?: string;
+  currency?: {
+    code?: string;
+    rateFromUsd?: number;
+    decimals?: number;
+  };
 }
 
 const FOCUS_INSTRUCTIONS: Record<string, string> = {
@@ -55,9 +60,168 @@ const FOCUS_INSTRUCTIONS: Record<string, string> = {
     'Prioritize monetizing paid usage rights, whitelisting ad access, and category exclusivity lockouts that create opportunity cost for the creator.',
 };
 
+type SupportedCurrency = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD' | 'JPY' | 'INR';
+
+interface FxRatesCacheEntry {
+  base: 'USD';
+  rates: Record<SupportedCurrency, number>;
+  provider: string;
+  asOfDate: string;
+  fetchedAt: string;
+  expiresAtMs: number;
+}
+
+const TARGET_FX_CODES: Array<Exclude<SupportedCurrency, 'USD'>> = [
+  'EUR',
+  'GBP',
+  'CAD',
+  'AUD',
+  'JPY',
+  'INR',
+];
+
+const BASELINE_FX_RATES: Record<SupportedCurrency, number> = {
+  USD: 1.0,
+  EUR: 0.92,
+  GBP: 0.79,
+  CAD: 1.38,
+  AUD: 1.52,
+  JPY: 151,
+  INR: 84.5,
+};
+
+let fxRatesCache: FxRatesCacheEntry | null = null;
+const FX_CACHE_TTL_MS = 30 * 60 * 1000;
+
+function extractValidatedRates(
+  rawRates: Record<string, unknown> | undefined
+): Record<SupportedCurrency, number> | null {
+  if (!rawRates || typeof rawRates !== 'object') return null;
+  const result: Record<SupportedCurrency, number> = { ...BASELINE_FX_RATES, USD: 1.0 };
+  for (const code of TARGET_FX_CODES) {
+    const val = rawRates[code];
+    if (typeof val !== 'number' || !Number.isFinite(val) || val <= 0) {
+      return null;
+    }
+    result[code] = Number(val.toFixed(code === 'JPY' || code === 'INR' ? 2 : 4));
+  }
+  return result;
+}
+
+async function fetchLiveExchangeRates(): Promise<Omit<FxRatesCacheEntry, 'expiresAtMs'> & { source: 'live' | 'fallback' }> {
+  // Primary: Frankfurter (European Central Bank reference rates, keyless)
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const resp = await fetch(
+      `https://api.frankfurter.dev/v1/latest?base=USD&symbols=${TARGET_FX_CODES.join(',')}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timer);
+    if (resp.ok) {
+      const data = (await resp.json()) as {
+        date?: string;
+        rates?: Record<string, unknown>;
+      };
+      const validated = extractValidatedRates(data?.rates);
+      if (validated) {
+        return {
+          base: 'USD',
+          rates: validated,
+          provider: 'Frankfurter (ECB)',
+          asOfDate:
+            typeof data.date === 'string' && data.date.trim()
+              ? data.date
+              : new Date().toISOString().slice(0, 10),
+          fetchedAt: new Date().toISOString(),
+          source: 'live',
+        };
+      }
+    }
+  } catch {
+    // Fall through to secondary provider
+  }
+
+  // Secondary: Open ExchangeRate-API (keyless open tier)
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const resp = await fetch('https://open.er-api.com/v6/latest/USD', {
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (resp.ok) {
+      const data = (await resp.json()) as {
+        result?: string;
+        time_last_update_utc?: string;
+        rates?: Record<string, unknown>;
+      };
+      const validated = extractValidatedRates(data?.rates);
+      if (data?.result === 'success' && validated) {
+        const parsedDate = data.time_last_update_utc
+          ? new Date(data.time_last_update_utc)
+          : new Date();
+        const asOfDate = Number.isNaN(parsedDate.getTime())
+          ? new Date().toISOString().slice(0, 10)
+          : parsedDate.toISOString().slice(0, 10);
+        return {
+          base: 'USD',
+          rates: validated,
+          provider: 'ExchangeRate-API',
+          asOfDate,
+          fetchedAt: new Date().toISOString(),
+          source: 'live',
+        };
+      }
+    }
+  } catch {
+    // Fall through to baseline fallback
+  }
+
+  return {
+    base: 'USD',
+    rates: { ...BASELINE_FX_RATES },
+    provider: 'Baseline Reference',
+    asOfDate: new Date().toISOString().slice(0, 10),
+    fetchedAt: new Date().toISOString(),
+    source: 'fallback',
+  };
+}
+
 async function startServer() {
   const app = express();
   app.use(express.json({ limit: '1mb' }));
+
+  app.get('/api/exchange-rates', async (req: Request, res: Response) => {
+    const forceRefresh = req.query.refresh === '1' || req.query.refresh === 'true';
+    const now = Date.now();
+
+    if (!forceRefresh && fxRatesCache && fxRatesCache.expiresAtMs > now) {
+      res.json({
+        base: fxRatesCache.base,
+        rates: fxRatesCache.rates,
+        provider: fxRatesCache.provider,
+        asOfDate: fxRatesCache.asOfDate,
+        fetchedAt: fxRatesCache.fetchedAt,
+        source: 'cache',
+      });
+      return;
+    }
+
+    const latest = await fetchLiveExchangeRates();
+    if (latest.source === 'live') {
+      fxRatesCache = {
+        base: latest.base,
+        rates: latest.rates,
+        provider: latest.provider,
+        asOfDate: latest.asOfDate,
+        fetchedAt: latest.fetchedAt,
+        expiresAtMs: now + FX_CACHE_TTL_MS,
+      };
+    }
+
+    res.json(latest);
+  });
 
   app.post('/api/negotiation-coach', async (req: Request, res: Response) => {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -90,6 +254,16 @@ async function startServer() {
       ? body.focus
       : 'balanced';
     const focusGuidance = FOCUS_INSTRUCTIONS[focusKey];
+    const currencyCode =
+      typeof body.currency?.code === 'string' && body.currency.code.trim()
+        ? body.currency.code.trim().toUpperCase()
+        : 'USD';
+    const currencyRate =
+      typeof body.currency?.rateFromUsd === 'number' &&
+      Number.isFinite(body.currency.rateFromUsd) &&
+      body.currency.rateFromUsd > 0
+        ? body.currency.rateFromUsd
+        : 1;
 
     const formattedDeals = deals.map((d, index) => ({
       slot: `Deal ${index + 1}`,
@@ -136,9 +310,10 @@ async function startServer() {
       '- Never suggest giving away perpetual IP, blanket exclusivity, or unlimited whitelisting for free.',
       '- Keep talking points concise, realistic, polite, commercially sharp, and immediately usable verbatim in an email or call.',
       '- Ensure recommendedAnchorRate and recommendedFloorRate are realistic numeric USD amounts grounded in the selected deals.',
+      `- Also draft one complete, professional, ready-to-send sponsor outreach email ("outreachEmail") that uses the negotiationNotes, key discrepancies, and recommended anchor quote (formatted in ${currencyCode}, where 1 USD = ${currencyRate} ${currencyCode}). Use [Brand Name], [Contact Name], and [Your Name] placeholders where names are unknown.`,
     ].join('\n');
 
-    const prompt = `Analyze the following selected sponsorship deal proposals and generate counter-negotiation coaching:\n\n${JSON.stringify(
+    const prompt = `Analyze the following selected sponsorship deal proposals and generate counter-negotiation coaching and a ready-to-send sponsor outreach email:\n\n${JSON.stringify(
       formattedDeals,
       null,
       2
@@ -234,12 +409,30 @@ async function startServer() {
                   'concessionPlaybook',
                 ],
               },
+              outreachEmail: {
+                type: Type.OBJECT,
+                description:
+                  'A complete, professional templated outreach/counter-negotiation email to send to the brand sponsor incorporating deal notes, anchor rate, and scope rationale.',
+                properties: {
+                  subject: {
+                    type: Type.STRING,
+                    description: 'Concise, professional email subject line.',
+                  },
+                  body: {
+                    type: Type.STRING,
+                    description:
+                      'Full ready-to-send email body with clear paragraphs, scope options, and polite call to action.',
+                  },
+                },
+                required: ['subject', 'body'],
+              },
             },
             required: [
               'executiveSummary',
               'keyDiscrepancies',
               'talkingPoints',
               'counterOfferRecommendation',
+              'outreachEmail',
             ],
           },
         },

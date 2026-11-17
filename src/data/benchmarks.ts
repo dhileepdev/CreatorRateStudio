@@ -1,12 +1,83 @@
 import {
   ContractClause,
   CreatorProfile,
+  CurrencyCode,
+  CurrencySpec,
   DealScope,
   ExclusivityType,
   NicheId,
   PlatformId,
   UsageRightsTerm,
 } from '../types/calculator';
+
+export const CURRENCY_ORDER: CurrencyCode[] = [
+  'USD',
+  'EUR',
+  'GBP',
+  'CAD',
+  'AUD',
+  'JPY',
+  'INR',
+];
+
+export const CURRENCY_SPECS: Record<CurrencyCode, CurrencySpec> = {
+  USD: {
+    code: 'USD',
+    symbol: '$',
+    name: 'US Dollar',
+    rateFromUsd: 1.0,
+    decimals: 2,
+    tier: 'free',
+  },
+  EUR: {
+    code: 'EUR',
+    symbol: '€',
+    name: 'Euro',
+    rateFromUsd: 0.92,
+    decimals: 2,
+    tier: 'free',
+  },
+  GBP: {
+    code: 'GBP',
+    symbol: '£',
+    name: 'British Pound',
+    rateFromUsd: 0.79,
+    decimals: 2,
+    tier: 'pro',
+  },
+  CAD: {
+    code: 'CAD',
+    symbol: 'CA$',
+    name: 'Canadian Dollar',
+    rateFromUsd: 1.38,
+    decimals: 2,
+    tier: 'pro',
+  },
+  AUD: {
+    code: 'AUD',
+    symbol: 'A$',
+    name: 'Australian Dollar',
+    rateFromUsd: 1.52,
+    decimals: 2,
+    tier: 'pro',
+  },
+  JPY: {
+    code: 'JPY',
+    symbol: '¥',
+    name: 'Japanese Yen',
+    rateFromUsd: 151,
+    decimals: 0,
+    tier: 'pro',
+  },
+  INR: {
+    code: 'INR',
+    symbol: '₹',
+    name: 'Indian Rupee',
+    rateFromUsd: 84.5,
+    decimals: 2,
+    tier: 'pro',
+  },
+};
 
 export interface NicheBenchmark {
   id: NicheId;
@@ -215,6 +286,10 @@ export interface TierBenchmarkRow {
   instagramReel: string;
   tiktokVideo: string;
   youtubeLongForm: string;
+  instagramReelUsd: number;
+  tiktokVideoUsd: number;
+  youtubeLongFormUsd: number;
+  isPlus?: boolean;
   typicalER: string;
 }
 
@@ -228,6 +303,9 @@ export const INDUSTRY_TIER_BENCHMARKS: TierBenchmarkRow[] = [
     instagramReel: '$48',
     tiktokVideo: '$82',
     youtubeLongForm: '$289',
+    instagramReelUsd: 48,
+    tiktokVideoUsd: 82,
+    youtubeLongFormUsd: 289,
     typicalER: '8.0% – 12.0%',
   },
   {
@@ -239,6 +317,9 @@ export const INDUSTRY_TIER_BENCHMARKS: TierBenchmarkRow[] = [
     instagramReel: '$262',
     tiktokVideo: '$825',
     youtubeLongForm: '$1,575',
+    instagramReelUsd: 262,
+    tiktokVideoUsd: 825,
+    youtubeLongFormUsd: 1575,
     typicalER: '4.0% – 8.0%',
   },
   {
@@ -250,6 +331,9 @@ export const INDUSTRY_TIER_BENCHMARKS: TierBenchmarkRow[] = [
     instagramReel: '$2,406',
     tiktokVideo: '$4,500',
     youtubeLongForm: '$14,437',
+    instagramReelUsd: 2406,
+    tiktokVideoUsd: 4500,
+    youtubeLongFormUsd: 14437,
     typicalER: '2.0% – 4.0%',
   },
   {
@@ -261,6 +345,9 @@ export const INDUSTRY_TIER_BENCHMARKS: TierBenchmarkRow[] = [
     instagramReel: '$6,562',
     tiktokVideo: '$11,250',
     youtubeLongForm: '$39,375',
+    instagramReelUsd: 6562,
+    tiktokVideoUsd: 11250,
+    youtubeLongFormUsd: 39375,
     typicalER: '1.5% – 2.5%',
   },
   {
@@ -272,6 +359,10 @@ export const INDUSTRY_TIER_BENCHMARKS: TierBenchmarkRow[] = [
     instagramReel: '$17,500+',
     tiktokVideo: '$30,000+',
     youtubeLongForm: '$105,000+',
+    instagramReelUsd: 17500,
+    tiktokVideoUsd: 30000,
+    youtubeLongFormUsd: 105000,
+    isPlus: true,
     typicalER: 'Under 2.0%',
   },
 ];

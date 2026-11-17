@@ -1,13 +1,19 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
+  AlertTriangle,
   ArrowRight,
   BookmarkPlus,
+  Check,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
   Copy,
   FileText,
   Scale,
+  Share2,
   Tag,
+  TrendingUp,
+  X,
 } from 'lucide-react';
 import {
   EXCLUSIVITY_SPECS,
@@ -22,14 +28,23 @@ import {
   DEFAULT_DEAL_TAGS,
   TieredPackage,
 } from '../types/calculator';
-import { formatCurrencyExact, formatNumber } from '../utils/pricingEngine';
+import { useCurrency } from '../context/CurrencyContext';
+import {
+  calculateCampaignRoi,
+  formatCurrency,
+  formatCurrencyExact,
+  formatNumber,
+} from '../utils/pricingEngine';
 
 interface ValuationPanelProps {
   profile: CreatorProfile;
   scope: DealScope;
   result: CalculatedDealResult;
   savedDealsCount: number;
+  sharedUrl: string | null;
   onCopyRateCard: () => void;
+  onShareConfiguration: () => void;
+  onDismissSharedUrl: () => void;
   onSaveToComparison: (
     customName: string,
     notes: string,
@@ -47,12 +62,17 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
   scope,
   result,
   savedDealsCount,
+  sharedUrl,
   onCopyRateCard,
+  onShareConfiguration,
+  onDismissSharedUrl,
   onSaveToComparison,
   onOpenComparison,
   onScrollToScripts,
   onApplyTierScope,
 }) => {
+  const { currency, currencySpec, fxMetadata, openProModal } = useCurrency();
+  const [copiedShareLink, setCopiedShareLink] = useState(false);
   const [dealNameInput, setDealNameInput] = useState('');
   const [dealNotesInput, setDealNotesInput] = useState('');
   const [targetCpaInput, setTargetCpaInput] = useState('');
@@ -60,10 +80,35 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [customTagInput, setCustomTagInput] = useState('');
   const [expandedTier, setExpandedTier] = useState<'tierA' | 'tierB' | 'tierC' | null>('tierB');
+  const [roiTargetCpaInput, setRoiTargetCpaInput] = useState('50');
+  const [roiAvgOrderValueInput, setRoiAvgOrderValueInput] = useState('120');
 
   const b = result.breakdown;
   const platformSpec = PLATFORM_SPECS[profile.platform];
   const nicheSpec = NICHE_BENCHMARKS[profile.niche];
+
+  const parsedRoiTargetCpa = Number(roiTargetCpaInput);
+  const parsedRoiAov = Number(roiAvgOrderValueInput);
+  const hasValidRoiCpa =
+    roiTargetCpaInput.trim() !== '' &&
+    Number.isFinite(parsedRoiTargetCpa) &&
+    parsedRoiTargetCpa > 0;
+
+  const campaignRoi = useMemo(() => {
+    if (!hasValidRoiCpa) return null;
+    const safeAov =
+      roiAvgOrderValueInput.trim() !== '' &&
+      Number.isFinite(parsedRoiAov) &&
+      parsedRoiAov >= 0
+        ? parsedRoiAov
+        : 0;
+    return calculateCampaignRoi({
+      profile,
+      result,
+      targetCpaUsd: parsedRoiTargetCpa,
+      avgOrderValueUsd: safeAov,
+    });
+  }, [hasValidRoiCpa, parsedRoiTargetCpa, parsedRoiAov, roiAvgOrderValueInput, profile, result]);
 
   const creativeSharePct =
     b.totalRecommendedRate > 0
@@ -124,10 +169,10 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
         <div className="flex flex-wrap items-start justify-between gap-4 pb-5 border-b border-slate-100">
           <div>
             <div className="text-xs font-medium text-slate-500">
-              Total Recommended Deal Rate
+              Total Recommended Deal Rate ({currency})
             </div>
             <div className="font-display text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight font-mono mt-1">
-              {formatCurrencyExact(b.totalRecommendedRate)}
+              {formatCurrencyExact(b.totalRecommendedRate, currency)}
             </div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 mt-2 tabular-nums">
               <span>{platformSpec.label}</span>
@@ -138,15 +183,31 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
                 {creativeSharePct}% creative / {ridersSharePct}% rights
               </span>
             </div>
+            {currency !== 'USD' && (
+              <div className="text-[11px] font-mono text-blue-700 mt-1.5">
+                Converted from {formatCurrencyExact(b.totalRecommendedRate, 'USD')} USD (1 USD = {currencySpec.rateFromUsd} {currency}
+                {fxMetadata.source !== 'fallback' && fxMetadata.asOfDate
+                  ? ` · ${fxMetadata.provider} ${fxMetadata.asOfDate}`
+                  : ''}
+                ) ·{' '}
+                <button
+                  type="button"
+                  onClick={() => openProModal(null)}
+                  className="underline hover:text-blue-900 font-sans cursor-pointer"
+                >
+                  Currency settings
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col items-start sm:items-end gap-1 text-xs">
             <span className="text-slate-500">Base Creation Fee</span>
             <span className="font-mono text-lg font-semibold text-slate-900">
-              {formatCurrencyExact(b.baseCreationFee)}
+              {formatCurrencyExact(b.baseCreationFee, currency)}
             </span>
             <span className="text-[11px] text-slate-500 font-mono">
-              +{formatCurrencyExact(b.totalCommercialRiders)} in rights riders
+              +{formatCurrencyExact(b.totalCommercialRiders, currency)} in rights riders
             </span>
           </div>
         </div>
@@ -163,12 +224,12 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
                   Audience Reach & Engagement Value
                 </div>
                 <div className="text-xs text-slate-500 font-mono">
-                  ({formatNumber(profile.medianViews)} / 1,000) × ${b.activeCpm.toFixed(2)} CPM ×{' '}
+                  ({formatNumber(profile.medianViews)} / 1,000) × {formatCurrencyExact(b.activeCpm, currency)} CPM ×{' '}
                   {b.platformMultiplier.toFixed(2)}x × {b.engagementMultiplier.toFixed(2)}x ER
                 </div>
               </div>
               <div className="font-mono font-medium text-slate-900 shrink-0">
-                {formatCurrencyExact(b.rawReachValue)}
+                {formatCurrencyExact(b.rawReachValue, currency)}
               </div>
             </div>
 
@@ -178,11 +239,11 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
                   Production Cost Floor
                 </div>
                 <div className="text-xs text-slate-500">
-                  Studio, editing & equipment baseline ($100 minimum enforced)
+                  Studio, editing &amp; equipment baseline ({formatCurrency(100, currency)} minimum enforced)
                 </div>
               </div>
               <div className="font-mono font-medium text-slate-900 shrink-0">
-                {formatCurrencyExact(b.effectiveFloorCost)}
+                {formatCurrencyExact(b.effectiveFloorCost, currency)}
               </div>
             </div>
 
@@ -191,7 +252,7 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
                 Subtotal: Organic Base Creation Fee
               </div>
               <div className="font-mono font-semibold text-slate-900 shrink-0">
-                {formatCurrencyExact(b.baseCreationFee)}
+                {formatCurrencyExact(b.baseCreationFee, currency)}
               </div>
             </div>
 
@@ -206,7 +267,7 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
                 </div>
               </div>
               <div className="font-mono font-medium text-slate-900 shrink-0">
-                {formatCurrencyExact(b.usageRightsFee)}
+                {formatCurrencyExact(b.usageRightsFee, currency)}
               </div>
             </div>
 
@@ -222,7 +283,7 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
                 </div>
               </div>
               <div className="font-mono font-medium text-slate-900 shrink-0">
-                {formatCurrencyExact(b.whitelistingFee)}
+                {formatCurrencyExact(b.whitelistingFee, currency)}
               </div>
             </div>
 
@@ -237,7 +298,7 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
                 </div>
               </div>
               <div className="font-mono font-medium text-slate-900 shrink-0">
-                {formatCurrencyExact(b.exclusivityFee)}
+                {formatCurrencyExact(b.exclusivityFee, currency)}
               </div>
             </div>
 
@@ -252,7 +313,7 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
                       <div className="text-xs text-slate-500">+25% expedited surcharge</div>
                     </div>
                     <div className="font-mono font-medium text-slate-900 shrink-0">
-                      {formatCurrencyExact(b.rushFee)}
+                      {formatCurrencyExact(b.rushFee, currency)}
                     </div>
                   </div>
                 )}
@@ -267,7 +328,7 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
                       </div>
                     </div>
                     <div className="font-mono font-medium text-slate-900 shrink-0">
-                      {formatCurrencyExact(b.excessRevisionsFee)}
+                      {formatCurrencyExact(b.excessRevisionsFee, currency)}
                     </div>
                   </div>
                 )}
@@ -282,13 +343,13 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
             <span>
               Est. 15.3% US Self-Employment Tax Reserve:{' '}
               <strong className="font-mono text-slate-900">
-                {formatCurrencyExact(b.estimatedSelfEmploymentTax)}
+                {formatCurrencyExact(b.estimatedSelfEmploymentTax, currency)}
               </strong>
             </span>
             <span>
               Est. Net After SE Tax:{' '}
               <strong className="font-mono text-slate-900">
-                {formatCurrencyExact(b.estimatedNetAfterSETax)}
+                {formatCurrencyExact(b.estimatedNetAfterSETax, currency)}
               </strong>
             </span>
           </div>
@@ -320,26 +381,47 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
               </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <input
-                type="number"
-                min={1}
-                step="any"
-                value={targetCpaInput}
-                onChange={(e) => setTargetCpaInput(e.target.value)}
-                placeholder="Brand Target CPA ($ Optional)"
-                aria-label="Brand Target CPA in dollars"
-                className="w-full px-3 py-2 text-xs font-mono bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
-              />
-              <input
-                type="number"
-                min={100}
-                step="any"
-                value={targetMonthlyRevenueInput}
-                onChange={(e) => setTargetMonthlyRevenueInput(e.target.value)}
-                placeholder="Target Monthly Revenue ($ Optional)"
-                aria-label="Target Monthly Revenue goal in dollars"
-                className="w-full px-3 py-2 text-xs font-mono bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
-              />
+              <div>
+                <input
+                  type="number"
+                  min={1}
+                  step="any"
+                  value={targetCpaInput}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setTargetCpaInput(val);
+                    const num = Number(val);
+                    if (val.trim() !== '' && Number.isFinite(num) && num > 0) {
+                      setRoiTargetCpaInput(val);
+                    }
+                  }}
+                  placeholder="Brand Target CPA (USD Optional)"
+                  aria-label="Brand Target CPA in US dollars"
+                  className="w-full px-3 py-2 text-xs font-mono bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
+                />
+                {currency !== 'USD' && Number(targetCpaInput) > 0 && (
+                  <div className="text-[11px] font-mono text-blue-700 mt-1">
+                    ≈ {formatCurrencyExact(Number(targetCpaInput), currency)}
+                  </div>
+                )}
+              </div>
+              <div>
+                <input
+                  type="number"
+                  min={100}
+                  step="any"
+                  value={targetMonthlyRevenueInput}
+                  onChange={(e) => setTargetMonthlyRevenueInput(e.target.value)}
+                  placeholder="Target Monthly Revenue (USD Optional)"
+                  aria-label="Target Monthly Revenue goal in US dollars"
+                  className="w-full px-3 py-2 text-xs font-mono bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 placeholder:font-sans focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
+                />
+                {currency !== 'USD' && Number(targetMonthlyRevenueInput) > 0 && (
+                  <div className="text-[11px] font-mono text-blue-700 mt-1">
+                    ≈ {formatCurrencyExact(Number(targetMonthlyRevenueInput), currency)}
+                  </div>
+                )}
+              </div>
             </div>
             <textarea
               rows={2}
@@ -407,6 +489,22 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
               </button>
               <button
                 type="button"
+                onClick={() => {
+                  onShareConfiguration();
+                  setCopiedShareLink(true);
+                  window.setTimeout(() => setCopiedShareLink(false), 2000);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-800 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100/80 transition-colors whitespace-nowrap cursor-pointer"
+              >
+                {copiedShareLink ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-700" aria-hidden="true" />
+                ) : (
+                  <Share2 className="w-3.5 h-3.5 text-blue-700" aria-hidden="true" />
+                )}
+                Share Configuration
+              </button>
+              <button
+                type="button"
                 onClick={onScrollToScripts}
                 className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors whitespace-nowrap cursor-pointer"
               >
@@ -427,7 +525,255 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
               <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
           </div>
+
+          {sharedUrl && (
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
+              <div className="flex items-center justify-between gap-2 text-[11px]">
+                <span className="font-semibold text-slate-700">
+                  Shareable Configuration Link (encodes current profile &amp; scope)
+                </span>
+                <button
+                  type="button"
+                  onClick={onDismissSharedUrl}
+                  aria-label="Dismiss shareable link"
+                  className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={sharedUrl}
+                  onFocus={(e) => e.target.select()}
+                  aria-label="Shareable configuration URL"
+                  className="flex-1 px-2.5 py-1.5 text-[11px] font-mono bg-white border border-slate-300 rounded text-slate-700 focus:outline-none focus:border-blue-600"
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(sharedUrl);
+                      setCopiedShareLink(true);
+                      window.setTimeout(() => setCopiedShareLink(false), 2000);
+                    } catch {
+                      // Input remains selectable if clipboard API is unavailable
+                    }
+                  }}
+                  className="px-2.5 py-1.5 text-[11px] font-medium text-white bg-slate-900 hover:bg-slate-800 rounded transition-colors cursor-pointer shrink-0"
+                >
+                  {copiedShareLink ? 'Copied' : 'Copy URL'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
+      </section>
+
+      {/* Campaign ROI Calculator */}
+      <section
+        id="campaign-roi"
+        aria-label="Campaign ROI calculator"
+        className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 space-y-4"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3 pb-3 border-b border-slate-100">
+          <div>
+            <div className="inline-flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-blue-700 shrink-0" aria-hidden="true" />
+              <h2 className="font-display text-base font-semibold text-slate-900">
+                Campaign ROI Calculator
+              </h2>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Estimates units sold, conversion revenue, and ROAS against your{' '}
+              <span className="font-mono text-slate-700">
+                {formatCurrencyExact(b.totalRecommendedRate, currency)}
+              </span>{' '}
+              total deal rate.
+            </p>
+          </div>
+
+          {hasValidRoiCpa && targetCpaInput !== roiTargetCpaInput && (
+            <button
+              type="button"
+              onClick={() => setTargetCpaInput(roiTargetCpaInput)}
+              className="text-xs font-medium text-blue-700 hover:text-blue-800 underline cursor-pointer whitespace-nowrap shrink-0"
+            >
+              Use Target CPA in Save Form
+            </button>
+          )}
+        </div>
+
+        {/* Inputs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label
+              htmlFor="roi-target-cpa"
+              className="block text-xs font-semibold text-slate-700 mb-1"
+            >
+              Sponsor Target CPA (USD)
+            </label>
+            <input
+              id="roi-target-cpa"
+              type="number"
+              min={1}
+              step="any"
+              value={roiTargetCpaInput}
+              onChange={(e) => setRoiTargetCpaInput(e.target.value)}
+              placeholder="e.g., 50"
+              className="w-full px-3 py-2 text-xs sm:text-sm font-mono bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
+            />
+            {currency !== 'USD' && hasValidRoiCpa && (
+              <div className="text-[11px] font-mono text-blue-700 mt-1">
+                ≈ {formatCurrencyExact(parsedRoiTargetCpa, currency)} / conversion
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label
+              htmlFor="roi-aov"
+              className="block text-xs font-semibold text-slate-700 mb-1"
+            >
+              Avg. Order Value / Unit Price (USD)
+            </label>
+            <input
+              id="roi-aov"
+              type="number"
+              min={0}
+              step="any"
+              value={roiAvgOrderValueInput}
+              onChange={(e) => setRoiAvgOrderValueInput(e.target.value)}
+              placeholder="e.g., 120"
+              className="w-full px-3 py-2 text-xs sm:text-sm font-mono bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
+            />
+            {currency !== 'USD' && Number.isFinite(parsedRoiAov) && parsedRoiAov > 0 && (
+              <div className="text-[11px] font-mono text-blue-700 mt-1">
+                ≈ {formatCurrencyExact(parsedRoiAov, currency)} / unit
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Estimated Outcomes */}
+        {!campaignRoi ? (
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600">
+            Enter a positive <strong>Sponsor Target CPA</strong> to estimate break-even units sold, conversion revenue, and ROAS.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 tabular-nums">
+              {/* Target CPA Pace Outcome */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+                <div className="text-[11px] font-semibold text-slate-600">
+                  At Target CPA ({formatCurrencyExact(campaignRoi.targetCpaUsd, currency)})
+                </div>
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-xs text-slate-600">Units Sold Needed</span>
+                  <span className="font-mono text-base font-bold text-slate-900">
+                    {formatNumber(campaignRoi.unitsAtTargetCpa)} units
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between gap-2 pt-1.5 border-t border-slate-200/80">
+                  <span className="text-xs text-slate-600">Est. Revenue</span>
+                  <span className="font-mono text-base font-bold text-blue-800">
+                    {formatCurrencyExact(campaignRoi.revenueAtTargetCpa, currency)}
+                  </span>
+                </div>
+                <div className="text-[11px] font-mono text-slate-500">
+                  Implied Return: {campaignRoi.roasAtTargetCpa.toFixed(2)}x ROAS
+                </div>
+              </div>
+
+              {/* Audience Engagement Forecast Outcome */}
+              <div className="p-3.5 bg-blue-50/40 border border-blue-200 rounded-lg space-y-2">
+                <div className="text-[11px] font-semibold text-blue-900">
+                  Audience Forecast ({(campaignRoi.engagementCaptureRate * 100).toFixed(1)}% of{' '}
+                  {formatNumber(campaignRoi.totalEngagements)} actions)
+                </div>
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-xs text-slate-700">Projected Units Sold</span>
+                  <span className="font-mono text-base font-bold text-slate-900">
+                    ~{formatNumber(campaignRoi.projectedUnitsSold)} units
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between gap-2 pt-1.5 border-t border-blue-200/80">
+                  <span className="text-xs text-slate-700">Projected Revenue</span>
+                  <span className="font-mono text-base font-bold text-blue-900">
+                    {formatCurrencyExact(campaignRoi.projectedRevenue, currency)}
+                  </span>
+                </div>
+                <div className="text-[11px] font-mono text-blue-800">
+                  {campaignRoi.projectedRoas.toFixed(2)}x ROAS · Proj. CPA{' '}
+                  {campaignRoi.projectedUnitsSold > 0
+                    ? formatCurrencyExact(campaignRoi.projectedCpaUsd, currency)
+                    : '—'}
+                </div>
+              </div>
+            </div>
+
+            {/* CPA Efficiency Verdict */}
+            <div
+              className={`px-3.5 py-2.5 rounded-lg border text-xs flex items-start gap-2 ${
+                campaignRoi.meetsTargetCpa
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                  : 'bg-amber-50 border-amber-200 text-amber-950'
+              }`}
+            >
+              {campaignRoi.meetsTargetCpa ? (
+                <CheckCircle2
+                  className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5"
+                  aria-hidden="true"
+                />
+              ) : (
+                <AlertTriangle
+                  className="w-4 h-4 text-amber-700 shrink-0 mt-0.5"
+                  aria-hidden="true"
+                />
+              )}
+              <span className="leading-relaxed">
+                {campaignRoi.meetsTargetCpa ? (
+                  <>
+                    <strong>Meets Target CPA:</strong> Engagement forecast projects{' '}
+                    <strong className="font-mono">
+                      {formatNumber(campaignRoi.projectedUnitsSold)} units
+                    </strong>{' '}
+                    (vs.{' '}
+                    <span className="font-mono">
+                      {formatNumber(campaignRoi.unitsAtTargetCpa)}
+                    </span>{' '}
+                    needed), yielding a projected CPA of{' '}
+                    <strong className="font-mono">
+                      {formatCurrencyExact(campaignRoi.projectedCpaUsd, currency)}
+                    </strong>{' '}
+                    and{' '}
+                    <strong className="font-mono">
+                      {formatCurrencyExact(campaignRoi.projectedRevenue, currency)}
+                    </strong>{' '}
+                    in sponsor revenue.
+                  </>
+                ) : (
+                  <>
+                    <strong>Below Target CPA Pace:</strong> At{' '}
+                    <span className="font-mono">
+                      {formatCurrencyExact(campaignRoi.targetCpaUsd, currency)}
+                    </span>{' '}
+                    CPA, the sponsor needs{' '}
+                    <strong className="font-mono">
+                      {formatNumber(campaignRoi.unitsAtTargetCpa)} units
+                    </strong>
+                    , whereas organic engagement projects{' '}
+                    <strong className="font-mono">
+                      ~{formatNumber(campaignRoi.projectedUnitsSold)} units
+                    </strong>
+                    . Pair this deliverable with paid ad amplification or unbundle riders to improve sponsor CPA.
+                  </>
+                )}
+              </span>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Module 3: Three-Tier Package Matrix */}
@@ -481,7 +827,7 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
 
                   <div className="flex items-center gap-3 shrink-0">
                     <span className="font-mono text-base font-bold text-slate-900">
-                      {formatCurrencyExact(tier.fee)}
+                      {formatCurrencyExact(tier.fee, currency)}
                     </span>
                     {isExpanded ? (
                       <ChevronUp className="w-4 h-4 text-slate-500" aria-hidden="true" />
@@ -530,7 +876,7 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
                         >
                           <span>{li.label}</span>
                           <span className="font-mono text-slate-900">
-                            {formatCurrencyExact(li.amount)}
+                            {formatCurrencyExact(li.amount, currency)}
                           </span>
                         </div>
                       ))}
