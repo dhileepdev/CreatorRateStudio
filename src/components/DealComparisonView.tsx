@@ -27,6 +27,7 @@ import {
   USAGE_RIGHTS_SPECS,
 } from '../data/benchmarks';
 import { useCurrency } from '../context/CurrencyContext';
+import { useTheme } from '../context/ThemeContext';
 import {
   BenchmarkDeviation,
   CalculatedDealResult,
@@ -59,6 +60,7 @@ import {
   formatNumber,
   generateComparisonMarkdown,
 } from '../utils/pricingEngine';
+import { CampaignTimeline } from './CampaignTimeline';
 import { DealPipelineTimeline } from './DealPipelineTimeline';
 import { NegotiationCoachPanel } from './NegotiationCoachPanel';
 import { SavedDealsHighlights } from './SavedDealsHighlights';
@@ -134,20 +136,20 @@ const DealChartTooltip: React.FC<ChartTooltipProps> = ({ active, payload, curren
   if (!active || !payload || payload.length === 0) return null;
   const d = payload[0].payload;
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3.5 text-xs min-w-[250px] max-w-[300px]">
-      <div className="font-display font-semibold text-slate-900 leading-snug">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-3.5 text-xs min-w-[250px] max-w-[300px]">
+      <div className="font-display font-semibold text-slate-900 dark:text-slate-100 leading-snug">
         {d.name}
       </div>
-      <div className="text-[11px] text-slate-500 mt-0.5 mb-2.5 tabular-nums">
+      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 mb-2.5 tabular-nums">
         {d.platform} · {formatNumber(d.medianViews)} views · {d.er.toFixed(1)}% ER
       </div>
 
       {/* Active Recharts Series Readout */}
-      <div className="space-y-1.5 border-t border-slate-100 pt-2 mb-2 tabular-nums">
+      <div className="space-y-1.5 border-t border-slate-100 dark:border-slate-800 pt-2 mb-2 tabular-nums">
         {payload.map((entry) => (
           <div
             key={String(entry.dataKey ?? entry.name)}
-            className="flex items-center justify-between gap-4 font-semibold text-slate-900"
+            className="flex items-center justify-between gap-4 font-semibold text-slate-900 dark:text-slate-100"
           >
             <span className="inline-flex items-center gap-1.5 min-w-0">
               <span
@@ -163,7 +165,7 @@ const DealChartTooltip: React.FC<ChartTooltipProps> = ({ active, payload, curren
           </div>
         ))}
         {payload.length > 1 && (
-          <div className="flex items-center justify-between gap-4 font-bold text-slate-900 pt-1 border-t border-slate-100">
+          <div className="flex items-center justify-between gap-4 font-bold text-slate-900 dark:text-slate-100 pt-1 border-t border-slate-100 dark:border-slate-800">
             <span>Total Recommended Rate</span>
             <span className="font-mono">{formatCurrencyExact(d.totalFee, currency)}</span>
           </div>
@@ -171,38 +173,38 @@ const DealChartTooltip: React.FC<ChartTooltipProps> = ({ active, payload, curren
       </div>
 
       {/* Itemized Rider Context */}
-      <div className="space-y-1 border-t border-slate-100 pt-2 text-[11px] tabular-nums">
-        <div className="flex items-center justify-between gap-4 text-slate-600">
+      <div className="space-y-1 border-t border-slate-100 dark:border-slate-800 pt-2 text-[11px] tabular-nums">
+        <div className="flex items-center justify-between gap-4 text-slate-600 dark:text-slate-300">
           <span>Base Creation Fee</span>
           <span className="font-mono">{formatCurrencyExact(d.baseFee, currency)}</span>
         </div>
-        <div className="flex items-center justify-between gap-4 text-slate-600">
+        <div className="flex items-center justify-between gap-4 text-slate-600 dark:text-slate-300">
           <span>Paid Usage Rights</span>
           <span className="font-mono">{formatCurrencyExact(d.usageFee, currency)}</span>
         </div>
-        <div className="flex items-center justify-between gap-4 text-slate-600">
+        <div className="flex items-center justify-between gap-4 text-slate-600 dark:text-slate-300">
           <span>Whitelisting</span>
           <span className="font-mono">{formatCurrencyExact(d.whitelistingFee, currency)}</span>
         </div>
-        <div className="flex items-center justify-between gap-4 text-slate-600">
+        <div className="flex items-center justify-between gap-4 text-slate-600 dark:text-slate-300">
           <span>Category Exclusivity</span>
           <span className="font-mono">{formatCurrencyExact(d.exclusivityFee, currency)}</span>
         </div>
         {d.otherRidersFee > 0 && (
-          <div className="flex items-center justify-between gap-4 text-slate-600">
+          <div className="flex items-center justify-between gap-4 text-slate-600 dark:text-slate-300">
             <span>Rush / Extra Revisions</span>
             <span className="font-mono">{formatCurrencyExact(d.otherRidersFee, currency)}</span>
           </div>
         )}
         {d.deltaVsLowest > 0 && (
-          <div className="flex items-center justify-between gap-4 text-blue-700 font-medium pt-1">
+          <div className="flex items-center justify-between gap-4 text-blue-700 dark:text-blue-400 font-medium pt-1">
             <span>Difference vs. lowest</span>
             <span className="font-mono">+{formatCurrencyExact(d.deltaVsLowest, currency)}</span>
           </div>
         )}
         {d.notes && (
-          <div className="pt-1.5 mt-1.5 border-t border-slate-100 text-slate-600 leading-relaxed">
-            <span className="font-semibold text-slate-700">Notes: </span>
+          <div className="pt-1.5 mt-1.5 border-t border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-300 leading-relaxed">
+            <span className="font-semibold text-slate-700 dark:text-slate-200">Notes: </span>
             {d.notes}
           </div>
         )}
@@ -234,21 +236,21 @@ const TrendChartTooltip: React.FC<TrendTooltipProps> = ({ active, payload, curre
   if (!active || !payload || payload.length === 0) return null;
   const d = payload[0].payload;
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3.5 text-xs min-w-[230px] max-w-[280px]">
-      <div className="font-display font-semibold text-slate-900 leading-snug">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-3.5 text-xs min-w-[230px] max-w-[280px]">
+      <div className="font-display font-semibold text-slate-900 dark:text-slate-100 leading-snug">
         {d.name}
       </div>
-      <div className="text-[11px] text-slate-500 mt-0.5 mb-2 tabular-nums">
+      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 mb-2 tabular-nums">
         {d.fullTimestamp} · {d.platform}
       </div>
-      <div className="space-y-1 border-t border-slate-100 pt-2 tabular-nums">
-        <div className="flex items-center justify-between gap-4 font-semibold text-slate-900">
+      <div className="space-y-1 border-t border-slate-100 dark:border-slate-800 pt-2 tabular-nums">
+        <div className="flex items-center justify-between gap-4 font-semibold text-slate-900 dark:text-slate-100">
           <span>Total Deal Rate</span>
-          <span className="font-mono text-blue-700">
+          <span className="font-mono text-blue-700 dark:text-blue-400">
             {formatCurrencyExact(d.totalRate, currency)}
           </span>
         </div>
-        <div className="flex items-center justify-between gap-4 text-slate-600">
+        <div className="flex items-center justify-between gap-4 text-slate-600 dark:text-slate-300">
           <span>Base Creation Fee</span>
           <span className="font-mono">{formatCurrencyExact(d.baseFee, currency)}</span>
         </div>
@@ -256,10 +258,10 @@ const TrendChartTooltip: React.FC<TrendTooltipProps> = ({ active, payload, curre
           <div
             className={`flex items-center justify-between gap-4 font-medium pt-1 ${
               d.deltaFromPrev > 0
-                ? 'text-emerald-700'
+                ? 'text-emerald-700 dark:text-emerald-400'
                 : d.deltaFromPrev < 0
-                ? 'text-red-700'
-                : 'text-slate-600'
+                ? 'text-red-700 dark:text-red-400'
+                : 'text-slate-600 dark:text-slate-400'
             }`}
           >
             <span>vs. previous saved</span>
@@ -353,10 +355,10 @@ function getRateDensityClasses(
 ): RateDensityClasses {
   if (dealCount <= 1 || maxRate <= minRate) {
     return {
-      cellClass: 'bg-blue-50',
-      textClass: 'text-slate-900',
-      subTextClass: 'text-slate-600',
-      badgeTextClass: 'text-blue-800',
+      cellClass: 'bg-blue-50 dark:bg-blue-950/60',
+      textClass: 'text-slate-900 dark:text-slate-100',
+      subTextClass: 'text-slate-600 dark:text-slate-300',
+      badgeTextClass: 'text-blue-800 dark:text-blue-300',
     };
   }
 
@@ -364,38 +366,38 @@ function getRateDensityClasses(
 
   if (ratio < 0.2) {
     return {
-      cellClass: 'bg-blue-50',
-      textClass: 'text-slate-900',
-      subTextClass: 'text-slate-600',
-      badgeTextClass: 'text-blue-800',
+      cellClass: 'bg-blue-50 dark:bg-blue-950/60',
+      textClass: 'text-slate-900 dark:text-slate-100',
+      subTextClass: 'text-slate-600 dark:text-slate-300',
+      badgeTextClass: 'text-blue-800 dark:text-blue-300',
     };
   }
   if (ratio < 0.45) {
     return {
-      cellClass: 'bg-blue-100',
-      textClass: 'text-slate-950',
-      subTextClass: 'text-slate-700',
-      badgeTextClass: 'text-blue-900',
+      cellClass: 'bg-blue-100 dark:bg-blue-900/60',
+      textClass: 'text-slate-950 dark:text-slate-100',
+      subTextClass: 'text-slate-700 dark:text-slate-200',
+      badgeTextClass: 'text-blue-900 dark:text-blue-200',
     };
   }
   if (ratio < 0.7) {
     return {
-      cellClass: 'bg-blue-200',
-      textClass: 'text-blue-950',
-      subTextClass: 'text-blue-900',
-      badgeTextClass: 'text-blue-950',
+      cellClass: 'bg-blue-200 dark:bg-blue-800/80',
+      textClass: 'text-blue-950 dark:text-white',
+      subTextClass: 'text-blue-900 dark:text-blue-100',
+      badgeTextClass: 'text-blue-950 dark:text-blue-100',
     };
   }
   if (ratio < 0.9) {
     return {
-      cellClass: 'bg-blue-700',
+      cellClass: 'bg-blue-700 dark:bg-blue-700',
       textClass: 'text-white',
       subTextClass: 'text-blue-100',
       badgeTextClass: 'text-blue-100',
     };
   }
   return {
-    cellClass: 'bg-blue-900',
+    cellClass: 'bg-blue-900 dark:bg-blue-600',
     textClass: 'text-white',
     subTextClass: 'text-blue-100',
     badgeTextClass: 'text-blue-100',
@@ -421,6 +423,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
   onNotify,
 }) => {
   const { currency } = useCurrency();
+  const { isDark } = useTheme();
   const [diffOnly, setDiffOnly] = useState(false);
   const [chartMode, setChartMode] = useState<'total' | 'stacked'>('total');
   const [trendMode, setTrendMode] = useState<'total' | 'compareBase'>('total');
@@ -1103,20 +1106,20 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Comparison Header Bar */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="space-y-1">
           <button
             type="button"
             onClick={onBackToCalculator}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 hover:text-blue-800 cursor-pointer mb-1"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer mb-1"
           >
             <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
             Back to Rate Calculator
           </button>
-          <h1 className="font-display text-xl sm:text-2xl font-bold text-slate-900">
+          <h1 className="font-display text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">
             Deal Comparison Matrix
           </h1>
-          <p className="text-xs sm:text-sm text-slate-600">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
             Compare saved sponsorship quotes side-by-side to evaluate how usage windows, whitelisting, and exclusivity shift total deal value.
           </p>
         </div>
@@ -1131,7 +1134,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                 } (${formatCurrencyExact(currentResult.breakdown.totalRecommendedRate, currency)})`
               )
             }
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-blue-700 rounded-lg hover:bg-blue-800 transition-colors cursor-pointer whitespace-nowrap"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-blue-700 dark:bg-blue-600 rounded-lg hover:bg-blue-800 dark:hover:bg-blue-500 transition-colors cursor-pointer whitespace-nowrap"
           >
             <BookmarkPlus className="w-3.5 h-3.5" aria-hidden="true" />
             Snapshot Current Quote
@@ -1142,7 +1145,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
               <button
                 type="button"
                 onClick={handleCopyComparison}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors cursor-pointer whitespace-nowrap"
               >
                 <Copy className="w-3.5 h-3.5" aria-hidden="true" />
                 Copy Comparison
@@ -1150,7 +1153,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
               <button
                 type="button"
                 onClick={onClearAllDeals}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-red-700 bg-white border border-red-200 rounded-lg hover:bg-red-50 transition-colors cursor-pointer whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-red-700 dark:text-red-400 bg-white dark:bg-slate-900 border border-red-200 dark:border-red-900/70 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/50 transition-colors cursor-pointer whitespace-nowrap"
               >
                 <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
                 Clear All
@@ -1162,26 +1165,26 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
 
       {/* Empty State */}
       {savedDeals.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-10 text-center max-w-2xl mx-auto">
-          <Scale className="w-8 h-8 text-slate-400 mx-auto mb-3" aria-hidden="true" />
-          <h2 className="font-display text-lg font-semibold text-slate-900">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-10 text-center max-w-2xl mx-auto">
+          <Scale className="w-8 h-8 text-slate-400 dark:text-slate-500 mx-auto mb-3" aria-hidden="true" />
+          <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-slate-100">
             No Saved Deals to Compare Yet
           </h2>
-          <p className="text-sm text-slate-600 mt-1.5 max-w-md mx-auto">
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1.5 max-w-md mx-auto">
             Save your current calculator configuration or load two realistic negotiation scenarios (e.g., Organic vs. 90-Day Paid + Exclusivity) to inspect pricing and scope deltas side-by-side.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
             <button
               type="button"
               onClick={() => onSaveCurrentDeal()}
-              className="px-4 py-2.5 text-xs sm:text-sm font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              className="px-4 py-2.5 text-xs sm:text-sm font-medium text-white bg-slate-900 dark:bg-blue-600 rounded-lg hover:bg-slate-800 dark:hover:bg-blue-500 transition-colors cursor-pointer"
             >
               Save Current Calculator Quote
             </button>
             <button
               type="button"
               onClick={onLoadSampleComparison}
-              className="px-4 py-2.5 text-xs sm:text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100/70 transition-colors cursor-pointer"
+              className="px-4 py-2.5 text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100/70 dark:hover:bg-blue-900/60 transition-colors cursor-pointer"
             >
               Load Sample 2-Deal Comparison
             </button>
@@ -1192,23 +1195,23 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
           {/* Filter & Sort Controls Bar */}
           <section
             aria-label="Filter and sort saved deals"
-            className="bg-white border border-slate-200 rounded-xl px-5 py-3.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3.5"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-5 py-3.5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3.5"
           >
             <div className="flex flex-wrap items-center gap-4">
               {/* Platform Filter */}
               <div className="flex items-center gap-2">
                 <label
                   htmlFor="comparison-platform-filter"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 whitespace-nowrap"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap"
                 >
-                  <Filter className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
+                  <Filter className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" aria-hidden="true" />
                   Platform
                 </label>
                 <select
                   id="comparison-platform-filter"
                   value={platformFilter}
                   onChange={(e) => setPlatformFilter(e.target.value as PlatformId | 'all')}
-                  className="px-3 py-1.5 text-xs font-medium text-slate-900 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 cursor-pointer"
+                  className="px-3 py-1.5 text-xs font-medium text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 cursor-pointer"
                 >
                   <option value="all">All Platforms ({savedDeals.length})</option>
                   {(Object.keys(PLATFORM_SPECS) as PlatformId[]).map((pid) => {
@@ -1226,16 +1229,16 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
               <div className="flex items-center gap-2">
                 <label
                   htmlFor="comparison-tag-filter"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 whitespace-nowrap"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap"
                 >
-                  <Tag className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
+                  <Tag className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" aria-hidden="true" />
                   Tag
                 </label>
                 <select
                   id="comparison-tag-filter"
                   value={tagFilter}
                   onChange={(e) => setTagFilter(e.target.value)}
-                  className="px-3 py-1.5 text-xs font-medium text-slate-900 bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 cursor-pointer"
+                  className="px-3 py-1.5 text-xs font-medium text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 cursor-pointer"
                 >
                   <option value="all">All Tags ({savedDeals.length})</option>
                   {availableTagOptions.map((tag) => {
@@ -1254,14 +1257,14 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
 
               {/* Sort Order by Total Deal Rate or Tag */}
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 whitespace-nowrap">
-                  <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" aria-hidden="true" />
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                  <ArrowUpDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" aria-hidden="true" />
                   Sort
                 </span>
                 <div
                   role="group"
                   aria-label="Sort saved deals by Total Deal Rate or Tag"
-                  className="inline-flex flex-wrap items-center gap-1 p-1 bg-slate-100 rounded-lg"
+                  className="inline-flex flex-wrap items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg"
                 >
                   <button
                     type="button"
@@ -1269,8 +1272,8 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                     onClick={() => setSortOrder('default')}
                     className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                       sortOrder === 'default'
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                     }`}
                   >
                     Saved Order
@@ -1281,8 +1284,8 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                     onClick={() => setSortOrder('rate_asc')}
                     className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                       sortOrder === 'rate_asc'
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                     }`}
                   >
                     Low to High
@@ -1293,8 +1296,8 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                     onClick={() => setSortOrder('rate_desc')}
                     className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                       sortOrder === 'rate_desc'
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                     }`}
                   >
                     High to Low
@@ -1305,8 +1308,8 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                     onClick={() => setSortOrder('tag_asc')}
                     className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                       sortOrder === 'tag_asc'
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                     }`}
                   >
                     By Tag
@@ -1316,16 +1319,16 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
             </div>
 
             <div className="flex items-center justify-between lg:justify-end gap-3 text-xs tabular-nums">
-              <span className="text-slate-600">
-                Showing <strong className="text-slate-900">{visibleDeals.length}</strong> of{' '}
-                <strong className="text-slate-900">{savedDeals.length}</strong> saved{' '}
+              <span className="text-slate-600 dark:text-slate-400">
+                Showing <strong className="text-slate-900 dark:text-slate-100">{visibleDeals.length}</strong> of{' '}
+                <strong className="text-slate-900 dark:text-slate-100">{savedDeals.length}</strong> saved{' '}
                 {savedDeals.length === 1 ? 'deal' : 'deals'}
               </span>
               {hasActiveFilters && (
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 rounded-md transition-colors cursor-pointer"
                 >
                   <RotateCcw className="w-3 h-3" aria-hidden="true" />
                   Reset
@@ -1346,17 +1349,17 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
           {allDealsGoalSummary && (
             <section
               aria-label="Performance vs Goal progress indicator"
-              className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 space-y-4"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 sm:p-6 space-y-4"
             >
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div>
                   <div className="inline-flex items-center gap-2">
-                    <Target className="w-4 h-4 text-blue-700 shrink-0" aria-hidden="true" />
-                    <h2 className="font-display text-base font-semibold text-slate-900">
+                    <Target className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0" aria-hidden="true" />
+                    <h2 className="font-display text-base font-semibold text-slate-900 dark:text-slate-100">
                       Performance vs Goal
                     </h2>
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     Percentage progress toward your saved Target Monthly Revenue from the sum of all Total Deal Rates ({savedDeals.length}{' '}
                     {savedDeals.length === 1 ? 'saved proposal' : 'saved proposals'}).
                   </p>
@@ -1367,8 +1370,8 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                   <div
                     className={`inline-flex items-center gap-1.5 text-xs font-semibold tabular-nums shrink-0 ${
                       allDealsGoalSummary.coveragePct >= 100
-                        ? 'text-emerald-700'
-                        : 'text-blue-700'
+                        ? 'text-emerald-700 dark:text-emerald-400'
+                        : 'text-blue-700 dark:text-blue-400'
                     }`}
                   >
                     {allDealsGoalSummary.coveragePct >= 100 ? (
@@ -1393,35 +1396,35 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                     )}
                   </div>
                 ) : (
-                  <span className="text-xs font-medium text-slate-500 shrink-0">
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 shrink-0">
                     Target Monthly Revenue not set
                   </span>
                 )}
               </div>
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-1 tabular-nums">
-                <div className="border border-slate-200/80 rounded-lg p-3.5 bg-slate-50/50">
-                  <div className="text-[11px] font-medium text-slate-500">
+                <div className="border border-slate-200/80 dark:border-slate-800 rounded-lg p-3.5 bg-slate-50/50 dark:bg-slate-800/50">
+                  <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
                     Sum of All Total Deal Rates
                   </div>
-                  <div className="font-mono text-lg font-bold text-slate-900 mt-0.5">
+                  <div className="font-mono text-lg font-bold text-slate-900 dark:text-slate-100 mt-0.5">
                     {formatCurrencyExact(allDealsGoalSummary.aggregatedTotalDealRate, currency)}
                   </div>
-                  <div className="text-[11px] font-mono text-slate-500 mt-0.5">
+                  <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
                     Avg {formatCurrencyExact(allDealsGoalSummary.avgDealRate, currency)} / deal
                   </div>
                 </div>
 
-                <div className="border border-slate-200/80 rounded-lg p-3.5 bg-slate-50/50">
-                  <div className="text-[11px] font-medium text-slate-500">
+                <div className="border border-slate-200/80 dark:border-slate-800 rounded-lg p-3.5 bg-slate-50/50 dark:bg-slate-800/50">
+                  <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
                     Target Monthly Revenue
                   </div>
-                  <div className="font-mono text-lg font-bold text-slate-900 mt-0.5">
+                  <div className="font-mono text-lg font-bold text-slate-900 dark:text-slate-100 mt-0.5">
                     {allDealsGoalSummary.targetMonthlyRevenue !== null
                       ? formatCurrencyExact(allDealsGoalSummary.targetMonthlyRevenue, currency)
                       : 'Not set'}
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                     {allDealsGoalSummary.targetMonthlyRevenue !== null
                       ? allDealsGoalSummary.hasMixedGoals
                         ? 'Average of saved goals'
@@ -1430,24 +1433,24 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                   </div>
                 </div>
 
-                <div className="border border-slate-200/80 rounded-lg p-3.5 bg-slate-50/50">
-                  <div className="text-[11px] font-medium text-slate-500">
+                <div className="border border-slate-200/80 dark:border-slate-800 rounded-lg p-3.5 bg-slate-50/50 dark:bg-slate-800/50">
+                  <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
                     Goal Progress
                   </div>
                   <div
                     className={`font-mono text-lg font-bold mt-0.5 ${
                       allDealsGoalSummary.coveragePct === null
-                        ? 'text-slate-400'
+                        ? 'text-slate-400 dark:text-slate-500'
                         : allDealsGoalSummary.coveragePct >= 100
-                        ? 'text-emerald-700'
-                        : 'text-blue-700'
+                        ? 'text-emerald-700 dark:text-emerald-400'
+                        : 'text-blue-700 dark:text-blue-400'
                     }`}
                   >
                     {allDealsGoalSummary.coveragePct !== null
                       ? `${allDealsGoalSummary.coveragePct.toFixed(1)}%`
                       : '—'}
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                     {allDealsGoalSummary.coveragePct !== null
                       ? allDealsGoalSummary.coveragePct >= 100
                         ? 'Monthly target achieved'
@@ -1456,18 +1459,18 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                   </div>
                 </div>
 
-                <div className="border border-slate-200/80 rounded-lg p-3.5 bg-slate-50/50">
-                  <div className="text-[11px] font-medium text-slate-500">
+                <div className="border border-slate-200/80 dark:border-slate-800 rounded-lg p-3.5 bg-slate-50/50 dark:bg-slate-800/50">
+                  <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
                     Deals Needed / Month
                   </div>
-                  <div className="font-mono text-lg font-bold text-slate-900 mt-0.5">
+                  <div className="font-mono text-lg font-bold text-slate-900 dark:text-slate-100 mt-0.5">
                     {allDealsGoalSummary.dealsNeededAtAvgRate !== null
                       ? `${allDealsGoalSummary.dealsNeededAtAvgRate} ${
                           allDealsGoalSummary.dealsNeededAtAvgRate === 1 ? 'deal' : 'deals'
                         }`
                       : '—'}
                   </div>
-                  <div className="text-[11px] font-mono text-slate-500 mt-0.5">
+                  <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
                     {allDealsGoalSummary.exactDealsAtAvgRate !== null
                       ? `${allDealsGoalSummary.exactDealsAtAvgRate.toFixed(1)}x at current avg rate`
                       : 'Set goal to project volume'}
@@ -1488,13 +1491,13 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                         allDealsGoalSummary.targetMonthlyRevenue,
                         currency
                       )} Target Monthly Revenue`}
-                      className="h-3 w-full bg-slate-100 border border-slate-200 rounded-full overflow-hidden"
+                      className="h-3 w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full overflow-hidden"
                     >
                       <div
                         className={`h-full rounded-full transition-all duration-300 ${
                           allDealsGoalSummary.coveragePct >= 100
-                            ? 'bg-emerald-600'
-                            : 'bg-blue-700'
+                            ? 'bg-emerald-600 dark:bg-emerald-500'
+                            : 'bg-blue-700 dark:bg-blue-500'
                         }`}
                         style={{
                           width: `${Math.min(100, Math.max(0, allDealsGoalSummary.coveragePct))}%`,
@@ -1502,7 +1505,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                       />
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-slate-500 tabular-nums">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-slate-500 dark:text-slate-400 tabular-nums">
                       <span>0% ({formatCurrency(0, currency)})</span>
                       <span>
                         50% ({formatCurrency(allDealsGoalSummary.targetMonthlyRevenue * 0.5, currency)})
@@ -1515,7 +1518,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                     {(platformFilter !== 'all' || tagFilter !== 'all') &&
                       monthlyGoalSummary &&
                       allDealsGoalSummary.targetMonthlyRevenue > 0 && (
-                        <div className="text-xs text-slate-600 pt-1 border-t border-slate-100 tabular-nums">
+                        <div className="text-xs text-slate-600 dark:text-slate-300 pt-1 border-t border-slate-100 dark:border-slate-800 tabular-nums">
                           Active filter (
                           {[
                             platformFilter !== 'all' ? PLATFORM_SPECS[platformFilter].label : null,
@@ -1528,11 +1531,11 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                             .filter(Boolean)
                             .join(' · ')}
                           ):{' '}
-                          <strong className="font-mono text-slate-900">
+                          <strong className="font-mono text-slate-900 dark:text-slate-100">
                             {formatCurrencyExact(monthlyGoalSummary.aggregatedTotalDealRate, currency)}
                           </strong>{' '}
                           contributes{' '}
-                          <strong className="font-mono text-blue-700">
+                          <strong className="font-mono text-blue-700 dark:text-blue-400">
                             {(
                               (monthlyGoalSummary.aggregatedTotalDealRate /
                                 allDealsGoalSummary.targetMonthlyRevenue) *
@@ -1549,12 +1552,12 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
           )}
 
           {visibleDeals.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-xl p-8 text-center">
-              <Filter className="w-7 h-7 text-slate-400 mx-auto mb-2.5" aria-hidden="true" />
-              <h2 className="font-display text-base font-semibold text-slate-900">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center">
+              <Filter className="w-7 h-7 text-slate-400 dark:text-slate-500 mx-auto mb-2.5" aria-hidden="true" />
+              <h2 className="font-display text-base font-semibold text-slate-900 dark:text-slate-100">
                 No Saved Deals Match Active Filters
               </h2>
-              <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-md mx-auto">
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-md mx-auto">
                 You have {savedDeals.length} saved{' '}
                 {savedDeals.length === 1 ? 'proposal' : 'proposals'} that do not match the selected{' '}
                 {[
@@ -1574,7 +1577,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
               <button
                 type="button"
                 onClick={resetFilters}
-                className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-slate-900 dark:bg-blue-600 rounded-lg hover:bg-slate-800 dark:hover:bg-blue-500 transition-colors cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
                 Reset Filters
@@ -1586,19 +1589,19 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
             <section
               role="alert"
               aria-label="Benchmark deviation warning"
-              className="bg-amber-50 border border-amber-300 rounded-xl p-5 space-y-3.5"
+              className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800/70 rounded-xl p-5 space-y-3.5"
             >
               <div className="flex items-start gap-3">
                 <AlertTriangle
-                  className="w-5 h-5 text-amber-700 shrink-0 mt-0.5"
+                  className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5"
                   aria-hidden="true"
                 />
                 <div className="space-y-1">
-                  <h2 className="font-display text-sm sm:text-base font-bold text-amber-950">
+                  <h2 className="font-display text-sm sm:text-base font-bold text-amber-950 dark:text-amber-200">
                     Benchmark Deviation Alert: {outlierDeals.length}{' '}
                     {outlierDeals.length === 1 ? 'Deal Deviates' : 'Deals Deviate'} &gt;25% From Niche/Tier Average
                   </h2>
-                  <p className="text-xs text-amber-900 leading-relaxed">
+                  <p className="text-xs text-amber-900 dark:text-amber-300/90 leading-relaxed">
                     Verify median view counts, custom CPM overrides, or commercial rights riders on flagged proposals to ensure no rate miscalculation against 2026 niche and follower-tier averages.
                   </p>
                 </div>
@@ -1612,36 +1615,36 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                   return (
                     <div
                       key={`outlier-${deal.id}`}
-                      className="bg-white border border-amber-200 rounded-lg p-3.5 flex flex-col justify-between gap-2.5 text-xs"
+                      className="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800/60 rounded-lg p-3.5 flex flex-col justify-between gap-2.5 text-xs"
                     >
                       <div className="space-y-1">
                         <div className="flex items-start justify-between gap-2">
-                          <span className="font-display font-semibold text-slate-900 leading-snug">
+                          <span className="font-display font-semibold text-slate-900 dark:text-slate-100 leading-snug">
                             {deal.name}
                           </span>
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono font-semibold bg-amber-100 text-amber-950 border border-amber-300 rounded-sm shrink-0">
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-mono font-semibold bg-amber-100 dark:bg-amber-950/80 text-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-700 rounded-sm shrink-0">
                             {sign}
                             {dev.deviationPct.toFixed(1)}%
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-600">
+                        <div className="text-[11px] text-slate-600 dark:text-slate-400">
                           {dev.nicheLabel} · {dev.tierLabel} Tier · {dev.platformLabel}
                         </div>
                       </div>
 
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 tabular-nums">
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 tabular-nums">
                         <div className="space-y-0.5 font-mono text-[11px]">
-                          <div className="text-slate-900 font-semibold">
+                          <div className="text-slate-900 dark:text-slate-100 font-semibold">
                             Quote: {formatCurrencyExact(deal.result.breakdown.totalRecommendedRate, currency)}
                           </div>
-                          <div className="text-slate-500">
+                          <div className="text-slate-500 dark:text-slate-400">
                             Benchmark: {formatCurrencyExact(dev.averageBenchmark, currency)}
                           </div>
                         </div>
                         <button
                           type="button"
                           onClick={() => onLoadDealIntoCalculator(deal)}
-                          className="px-2.5 py-1 text-[11px] font-medium text-amber-950 bg-amber-100 hover:bg-amber-200 rounded-md transition-colors cursor-pointer shrink-0"
+                          className="px-2.5 py-1 text-[11px] font-medium text-amber-950 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/70 hover:bg-amber-200 dark:hover:bg-amber-900/70 border border-transparent dark:border-amber-800/60 rounded-md transition-colors cursor-pointer shrink-0"
                         >
                           Verify Metrics
                         </button>
@@ -1658,26 +1661,26 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
             {/* Side-by-Side Total Fees Bar Chart */}
             <section
               aria-label="Total fees comparison bar chart"
-              className="xl:col-span-6 bg-white border border-slate-200 rounded-xl p-5 sm:p-6"
+              className="xl:col-span-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 sm:p-6"
             >
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <h2 className="font-display text-base font-semibold text-slate-900">
+                <h2 className="font-display text-base font-semibold text-slate-900 dark:text-slate-100">
                   Total Deal Fees Side-by-Side
                 </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Visual comparison of total recommended quotes across your saved scenarios.
                 </p>
               </div>
 
-              <div className="inline-flex items-center gap-1 p-1 bg-slate-100 rounded-lg">
+              <div className="inline-flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
                 <button
                   type="button"
                   onClick={() => setChartMode('total')}
                   className={`px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                     chartMode === 'total'
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                   }`}
                 >
                   Total Fee
@@ -1687,8 +1690,8 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                   onClick={() => setChartMode('stacked')}
                   className={`px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                     chartMode === 'stacked'
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                   }`}
                 >
                   Base + Add-Ons
@@ -1703,16 +1706,24 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                   margin={{ top: 24, right: 16, left: 8, bottom: 8 }}
                   barCategoryGap="24%"
                 >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke={isDark ? '#1E293B' : '#E2E8F0'}
+                  />
                   <XAxis
                     dataKey="shortName"
-                    tick={{ fill: '#334155', fontSize: 12 }}
-                    axisLine={{ stroke: '#CBD5E1' }}
+                    tick={{ fill: isDark ? '#CBD5E1' : '#334155', fontSize: 12 }}
+                    axisLine={{ stroke: isDark ? '#475569' : '#CBD5E1' }}
                     tickLine={false}
                   />
                   <YAxis
                     tickFormatter={(val: number) => formatCurrency(val, currency)}
-                    tick={{ fill: '#64748B', fontSize: 11, fontFamily: 'IBM Plex Mono, monospace' }}
+                    tick={{
+                      fill: isDark ? '#94A3B8' : '#64748B',
+                      fontSize: 11,
+                      fontFamily: 'IBM Plex Mono, monospace',
+                    }}
                     axisLine={false}
                     tickLine={false}
                     width={76}
@@ -1723,13 +1734,17 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                     labelFormatter={(_label, payload) =>
                       payload?.[0]?.payload?.name ?? ''
                     }
-                    cursor={{ fill: 'rgba(241, 245, 249, 0.7)' }}
+                    cursor={{
+                      fill: isDark
+                        ? 'rgba(30, 41, 59, 0.55)'
+                        : 'rgba(241, 245, 249, 0.7)',
+                    }}
                   />
                   {chartMode === 'total' ? (
                     <Bar
                       dataKey="totalFee"
                       name="Total Recommended Rate"
-                      fill="#1D4ED8"
+                      fill={isDark ? '#3B82F6' : '#1D4ED8'}
                       radius={[6, 6, 0, 0]}
                       maxBarSize={88}
                     >
@@ -1740,7 +1755,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                           typeof val === 'number' ? formatCurrencyExact(val, currency) : ''
                         }
                         style={{
-                          fill: '#0F172A',
+                          fill: isDark ? '#F1F5F9' : '#0F172A',
                           fontSize: 12,
                           fontWeight: 600,
                           fontFamily: 'IBM Plex Mono, monospace',
@@ -1750,14 +1765,18 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                   ) : (
                     <>
                       <Legend
-                        wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
+                        wrapperStyle={{
+                          fontSize: 12,
+                          paddingTop: 8,
+                          color: isDark ? '#CBD5E1' : '#334155',
+                        }}
                         iconType="square"
                       />
                       <Bar
                         dataKey="baseFee"
                         name="Base Creation Fee"
                         stackId="deal"
-                        fill="#0F172A"
+                        fill={isDark ? '#E2E8F0' : '#0F172A'}
                         radius={[0, 0, 0, 0]}
                         maxBarSize={88}
                       />
@@ -1765,7 +1784,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                         dataKey="ridersFee"
                         name="Commercial Add-Ons"
                         stackId="deal"
-                        fill="#1D4ED8"
+                        fill={isDark ? '#3B82F6' : '#1D4ED8'}
                         radius={[6, 6, 0, 0]}
                         maxBarSize={88}
                       >
@@ -1776,7 +1795,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                             typeof val === 'number' ? formatCurrencyExact(val, currency) : ''
                           }
                           style={{
-                            fill: '#0F172A',
+                            fill: isDark ? '#F1F5F9' : '#0F172A',
                             fontSize: 12,
                             fontWeight: 600,
                             fontFamily: 'IBM Plex Mono, monospace',
@@ -1793,11 +1812,11 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
             {/* Chronological Total Deal Rate Trend Chart */}
             <section
               aria-label="Total deal rate trend over time"
-              className="xl:col-span-6 bg-white border border-slate-200 rounded-xl p-5 sm:p-6"
+              className="xl:col-span-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 sm:p-6"
             >
-              <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-slate-100">
+              <div className="flex flex-wrap items-start justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
                 <div>
-                  <h2 className="font-display text-base font-semibold text-slate-900">
+                  <h2 className="font-display text-base font-semibold text-slate-900 dark:text-slate-100">
                     Total Deal Rate Trend (Chronological)
                   </h2>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
@@ -1805,10 +1824,10 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                       <span
                         className={`inline-flex items-center gap-1.5 font-semibold tabular-nums ${
                           trendSummary.direction === 'up'
-                            ? 'text-emerald-700'
+                            ? 'text-emerald-700 dark:text-emerald-400'
                             : trendSummary.direction === 'down'
-                            ? 'text-red-700'
-                            : 'text-slate-600'
+                            ? 'text-red-700 dark:text-red-400'
+                            : 'text-slate-600 dark:text-slate-400'
                         }`}
                       >
                         {trendSummary.direction === 'up' ? (
@@ -1833,21 +1852,21 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                         </span>
                       </span>
                     ) : (
-                      <span className="text-slate-500">
+                      <span className="text-slate-500 dark:text-slate-400">
                         Plots saved Total Deal Rates sorted by timestamp (save 2+ deals for slope)
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="inline-flex items-center gap-1 p-1 bg-slate-100 rounded-lg shrink-0">
+                <div className="inline-flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg shrink-0">
                   <button
                     type="button"
                     onClick={() => setTrendMode('total')}
                     className={`px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                       trendMode === 'total'
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                     }`}
                   >
                     Total Rate
@@ -1857,8 +1876,8 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                     onClick={() => setTrendMode('compareBase')}
                     className={`px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                       trendMode === 'compareBase'
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                     }`}
                   >
                     + Base Fee
@@ -1874,22 +1893,34 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                   >
                     <defs>
                       <linearGradient id="totalRateTrendFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#1D4ED8" stopOpacity={0.18} />
-                        <stop offset="95%" stopColor="#1D4ED8" stopOpacity={0.0} />
+                        <stop
+                          offset="5%"
+                          stopColor={isDark ? '#3B82F6' : '#1D4ED8'}
+                          stopOpacity={isDark ? 0.28 : 0.18}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor={isDark ? '#3B82F6' : '#1D4ED8'}
+                          stopOpacity={0.0}
+                        />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke={isDark ? '#1E293B' : '#E2E8F0'}
+                    />
                     <XAxis
                       dataKey="axisKey"
                       tickFormatter={(key) => trendLabelMap.get(String(key)) ?? ''}
-                      tick={{ fill: '#334155', fontSize: 11 }}
-                      axisLine={{ stroke: '#CBD5E1' }}
+                      tick={{ fill: isDark ? '#CBD5E1' : '#334155', fontSize: 11 }}
+                      axisLine={{ stroke: isDark ? '#475569' : '#CBD5E1' }}
                       tickLine={false}
                     />
                     <YAxis
                       tickFormatter={(val: number) => formatCurrency(val, currency)}
                       tick={{
-                        fill: '#64748B',
+                        fill: isDark ? '#94A3B8' : '#64748B',
                         fontSize: 11,
                         fontFamily: 'IBM Plex Mono, monospace',
                       }}
@@ -1899,17 +1930,20 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                     />
                     <Tooltip
                       content={<TrendChartTooltip currency={currency} />}
-                      cursor={{ stroke: '#94A3B8', strokeDasharray: '3 3' }}
+                      cursor={{
+                        stroke: isDark ? '#64748B' : '#94A3B8',
+                        strokeDasharray: '3 3',
+                      }}
                     />
                     {trendData.length >= 2 && monthlyGoalSummary && (
                       <ReferenceLine
                         y={monthlyGoalSummary.avgDealRate}
-                        stroke="#94A3B8"
+                        stroke={isDark ? '#64748B' : '#94A3B8'}
                         strokeDasharray="4 4"
                         label={{
                           value: `Avg ${formatCurrency(monthlyGoalSummary.avgDealRate, currency)}`,
                           position: 'insideTopRight',
-                          fill: '#64748B',
+                          fill: isDark ? '#94A3B8' : '#64748B',
                           fontSize: 11,
                           fontFamily: 'IBM Plex Mono, monospace',
                         }}
@@ -1917,7 +1951,11 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                     )}
                     {trendMode === 'compareBase' && (
                       <Legend
-                        wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
+                        wrapperStyle={{
+                          fontSize: 12,
+                          paddingTop: 8,
+                          color: isDark ? '#CBD5E1' : '#334155',
+                        }}
                         iconType="plainline"
                       />
                     )}
@@ -1925,19 +1963,19 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                       type="monotone"
                       dataKey="totalRate"
                       name="Total Deal Rate"
-                      stroke="#1D4ED8"
+                      stroke={isDark ? '#3B82F6' : '#1D4ED8'}
                       strokeWidth={2.5}
                       fill="url(#totalRateTrendFill)"
                       dot={{
                         r: 5,
-                        fill: '#FFFFFF',
-                        stroke: '#1D4ED8',
+                        fill: isDark ? '#0F172A' : '#FFFFFF',
+                        stroke: isDark ? '#3B82F6' : '#1D4ED8',
                         strokeWidth: 2.5,
                       }}
                       activeDot={{
                         r: 6.5,
-                        fill: '#1D4ED8',
-                        stroke: '#FFFFFF',
+                        fill: isDark ? '#3B82F6' : '#1D4ED8',
+                        stroke: isDark ? '#0F172A' : '#FFFFFF',
                         strokeWidth: 2,
                       }}
                     >
@@ -1949,7 +1987,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                           typeof val === 'number' ? formatCurrency(val, currency) : ''
                         }
                         style={{
-                          fill: '#0F172A',
+                          fill: isDark ? '#F1F5F9' : '#0F172A',
                           fontSize: 11,
                           fontWeight: 600,
                           fontFamily: 'IBM Plex Mono, monospace',
@@ -1961,20 +1999,20 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                         type="monotone"
                         dataKey="baseFee"
                         name="Base Creation Fee"
-                        stroke="#0F172A"
+                        stroke={isDark ? '#E2E8F0' : '#0F172A'}
                         strokeWidth={2}
                         strokeDasharray="4 3"
                         fill="none"
                         dot={{
                           r: 4,
-                          fill: '#FFFFFF',
-                          stroke: '#0F172A',
+                          fill: isDark ? '#0F172A' : '#FFFFFF',
+                          stroke: isDark ? '#E2E8F0' : '#0F172A',
                           strokeWidth: 2,
                         }}
                         activeDot={{
                           r: 5.5,
-                          fill: '#0F172A',
-                          stroke: '#FFFFFF',
+                          fill: isDark ? '#E2E8F0' : '#0F172A',
+                          stroke: isDark ? '#0F172A' : '#FFFFFF',
                           strokeWidth: 2,
                         }}
                       />
@@ -1991,36 +2029,42 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
             onLoadDealIntoCalculator={onLoadDealIntoCalculator}
           />
 
+          {/* Campaign Deliverable Timeline Visualizer */}
+          <CampaignTimeline
+            deals={visibleDeals}
+            onLoadDealIntoCalculator={onLoadDealIntoCalculator}
+          />
+
           {/* AI Negotiating Coach */}
           <NegotiationCoachPanel deals={visibleDeals} onNotify={onNotify} />
 
           {/* Performance Projection & Target CPA Summary Table */}
           <section
             aria-label="Deal performance projection summary"
-            className="bg-white border border-slate-200 rounded-xl overflow-hidden"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden"
           >
-            <div className="px-5 py-4 border-b border-slate-200 flex flex-wrap items-baseline justify-between gap-2 bg-slate-50/70">
+            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-baseline justify-between gap-2 bg-slate-50/70 dark:bg-slate-800/60">
               <div>
-                <h2 className="font-display text-base font-semibold text-slate-900">
+                <h2 className="font-display text-base font-semibold text-slate-900 dark:text-slate-100">
                   Brand ROI &amp; Performance Projection
                 </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Projects expected conversions from high-intent engagement actions (saves, shares, comments) against each deal&rsquo;s rate and Target CPA.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+              <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400">
                 <span>Capture model: 2.5%–6.0% of high-intent actions by ER tier</span>
                 {visibleDeals.length > 1 && rateBounds.max > rateBounds.min && (
                   <span className="inline-flex items-center gap-1.5" aria-label="Total Deal Rate color density scale from low to high">
-                    <span className="text-slate-500">Rate scale: Low</span>
+                    <span className="text-slate-500 dark:text-slate-400">Rate scale: Low</span>
                     <span className="inline-flex items-center gap-0.5" aria-hidden="true">
-                      <span className="w-2.5 h-2.5 rounded-xs bg-blue-50 border border-blue-200" />
-                      <span className="w-2.5 h-2.5 rounded-xs bg-blue-100" />
-                      <span className="w-2.5 h-2.5 rounded-xs bg-blue-200" />
+                      <span className="w-2.5 h-2.5 rounded-xs bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800" />
+                      <span className="w-2.5 h-2.5 rounded-xs bg-blue-100 dark:bg-blue-900" />
+                      <span className="w-2.5 h-2.5 rounded-xs bg-blue-200 dark:bg-blue-800" />
                       <span className="w-2.5 h-2.5 rounded-xs bg-blue-700" />
-                      <span className="w-2.5 h-2.5 rounded-xs bg-blue-900" />
+                      <span className="w-2.5 h-2.5 rounded-xs bg-blue-900 dark:bg-blue-600" />
                     </span>
-                    <span className="text-slate-700 font-medium">High</span>
+                    <span className="text-slate-700 dark:text-slate-300 font-medium">High</span>
                   </span>
                 )}
               </div>
@@ -2029,7 +2073,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs sm:text-sm min-w-[880px]">
                 <thead>
-                  <tr className="border-b border-slate-200 text-xs text-slate-500">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
                     <th scope="col" className="py-3 px-4 font-semibold">
                       Saved Deal
                     </th>
@@ -2050,7 +2094,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 tabular-nums">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 tabular-nums">
                   {visibleDeals.map((deal) => {
                     const proj = calculatePerformanceProjection(deal);
                     const isEditingCpa = editingCpaId === deal.id;
@@ -2072,10 +2116,10 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                         : null;
 
                     return (
-                      <tr key={`proj-${deal.id}`} className="hover:bg-slate-50/60 transition-colors">
+                      <tr key={`proj-${deal.id}`} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="py-3.5 px-4 align-top">
-                          <div className="font-semibold text-slate-900">{deal.name}</div>
-                          <div className="text-[11px] text-slate-500 mt-0.5">
+                          <div className="font-semibold text-slate-900 dark:text-slate-100">{deal.name}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                             {PLATFORM_SPECS[deal.profile.platform].shortLabel} ·{' '}
                             {formatNumber(deal.profile.medianViews)} median views
                           </div>
@@ -2084,7 +2128,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                               {deal.tags.map((tag) => (
                                 <span
                                   key={`roi-tag-${deal.id}-${tag}`}
-                                  className="px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200 rounded-sm"
+                                  className="px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-sm"
                                 >
                                   {tag}
                                 </span>
@@ -2103,8 +2147,8 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                             if (!dev || !dev.isOutlier) return null;
                             return (
                               <div className="mt-1.5 flex justify-end">
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-sans font-semibold bg-amber-100 text-amber-950 border border-amber-300 rounded-sm">
-                                  <AlertTriangle className="w-3 h-3 text-amber-700 shrink-0" aria-hidden="true" />
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-sans font-semibold bg-amber-100 dark:bg-amber-950/90 text-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-700 rounded-sm">
+                                  <AlertTriangle className="w-3 h-3 text-amber-700 dark:text-amber-400 shrink-0" aria-hidden="true" />
                                   {dev.deviationPct >= 0 ? '+' : ''}
                                   {dev.deviationPct.toFixed(0)}% vs bench
                                 </span>
@@ -2113,10 +2157,10 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                           })()}
                         </td>
                         <td className="py-3.5 px-4 align-top text-right whitespace-nowrap">
-                          <div className="font-mono font-medium text-slate-900">
+                          <div className="font-mono font-medium text-slate-900 dark:text-slate-100">
                             {formatNumber(proj.totalEngagements)} actions
                           </div>
-                          <div className="text-[11px] font-mono text-slate-500">
+                          <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                             {proj.calculatedER.toFixed(1)}% ER ({(proj.engagementCaptureRate * 100).toFixed(1)}% conv. benchmark)
                           </div>
                         </td>
@@ -2135,13 +2179,13 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                 }}
                                 autoFocus
                                 aria-label={`Edit Target CPA for ${deal.name}`}
-                                className="w-20 px-2 py-1 text-xs font-mono text-right border border-blue-500 rounded bg-white text-slate-900 focus:outline-none"
+                                className="w-20 px-2 py-1 text-xs font-mono text-right border border-blue-500 rounded bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none"
                               />
                               <button
                                 type="button"
                                 onClick={() => commitCpaUpdate(deal.id)}
                                 aria-label="Save Target CPA"
-                                className="p-1 text-emerald-700 hover:bg-emerald-50 rounded cursor-pointer"
+                                className="p-1 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 rounded cursor-pointer"
                               >
                                 <Check className="w-3.5 h-3.5" />
                               </button>
@@ -2151,8 +2195,8 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                               <span
                                 className={`font-mono ${
                                   proj.targetCpa !== null
-                                    ? 'font-semibold text-slate-900'
-                                    : 'text-slate-400 italic font-sans'
+                                    ? 'font-semibold text-slate-900 dark:text-slate-100'
+                                    : 'text-slate-400 dark:text-slate-500 italic font-sans'
                                 }`}
                               >
                                 {proj.targetCpa !== null
@@ -2168,7 +2212,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                   );
                                 }}
                                 aria-label={`Set Target CPA for ${deal.name}`}
-                                className="p-1 text-slate-400 hover:text-blue-700 rounded cursor-pointer"
+                                className="p-1 text-slate-400 dark:text-slate-500 hover:text-blue-700 dark:hover:text-blue-400 rounded cursor-pointer"
                               >
                                 <Edit3 className="w-3.5 h-3.5" />
                               </button>
@@ -2190,13 +2234,13 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                 }}
                                 autoFocus
                                 aria-label={`Edit Target Monthly Revenue for ${deal.name}`}
-                                className="w-24 px-2 py-1 text-xs font-mono text-right border border-blue-500 rounded bg-white text-slate-900 focus:outline-none"
+                                className="w-24 px-2 py-1 text-xs font-mono text-right border border-blue-500 rounded bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none"
                               />
                               <button
                                 type="button"
                                 onClick={() => commitRevenueUpdate(deal.id)}
                                 aria-label="Save Target Monthly Revenue"
-                                className="p-1 text-emerald-700 hover:bg-emerald-50 rounded cursor-pointer"
+                                className="p-1 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 rounded cursor-pointer"
                               >
                                 <Check className="w-3.5 h-3.5" />
                               </button>
@@ -2207,8 +2251,8 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                 <span
                                   className={`font-mono ${
                                     revGoal !== null
-                                      ? 'font-semibold text-slate-900'
-                                      : 'text-slate-400 italic font-sans'
+                                      ? 'font-semibold text-slate-900 dark:text-slate-100'
+                                      : 'text-slate-400 dark:text-slate-500 italic font-sans'
                                   }`}
                                 >
                                   {revGoal !== null
@@ -2224,13 +2268,13 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                     );
                                   }}
                                   aria-label={`Set Target Monthly Revenue for ${deal.name}`}
-                                  className="p-1 text-slate-400 hover:text-blue-700 rounded cursor-pointer"
+                                  className="p-1 text-slate-400 dark:text-slate-500 hover:text-blue-700 dark:hover:text-blue-400 rounded cursor-pointer"
                                 >
                                   <Edit3 className="w-3.5 h-3.5" />
                                 </button>
                               </div>
                               {dealsNeededForThisRate !== null && (
-                                <div className="text-[11px] font-mono text-slate-500">
+                                <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                                   {dealsNeededForThisRate}{' '}
                                   {dealsNeededForThisRate === 1 ? 'deal' : 'deals'}/mo needed
                                 </div>
@@ -2240,18 +2284,20 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                         </td>
                         <td className="py-3.5 px-4 align-top">
                           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                            <span className="font-mono font-semibold text-slate-900">
+                            <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">
                               ~{formatNumber(proj.projectedConversions)} expected conversions
                             </span>
                             {proj.projectedConversions > 0 && (
-                              <span className="text-xs font-mono text-slate-600">
+                              <span className="text-xs font-mono text-slate-600 dark:text-slate-300">
                                 ({formatCurrencyExact(proj.projectedCpa, currency)} est. CPA)
                               </span>
                             )}
                             {proj.meetsTargetCpa !== null && (
                               <span
                                 className={`text-[11px] font-semibold ${
-                                  proj.meetsTargetCpa ? 'text-emerald-700' : 'text-amber-800'
+                                  proj.meetsTargetCpa
+                                    ? 'text-emerald-700 dark:text-emerald-400'
+                                    : 'text-amber-800 dark:text-amber-400'
                                 }`}
                               >
                                 · {proj.meetsTargetCpa ? 'Meets Target CPA' : 'Above Target CPA'}
@@ -2259,14 +2305,14 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                             )}
                           </div>
                           {proj.breakEvenConversions !== null && proj.targetCpa !== null ? (
-                            <div className="text-[11px] text-slate-500 mt-0.5 font-mono">
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">
                               Break-even: {formatNumber(proj.breakEvenConversions)} conversions @{' '}
                               {formatCurrencyExact(proj.targetCpa, currency)} Target CPA
                               {proj.requiredEngagementConversionRate !== null &&
                                 ` (${proj.requiredEngagementConversionRate.toFixed(1)}% of engagements)`}
                             </div>
                           ) : (
-                            <div className="text-[11px] text-slate-500 mt-0.5">
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                               Set a Target CPA to calculate break-even conversion threshold.
                             </div>
                           )}
@@ -2277,45 +2323,45 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                 </tbody>
                 {monthlyGoalSummary && (
                   <tfoot>
-                    <tr className="bg-slate-50 border-t-2 border-slate-200 font-medium text-slate-900 tabular-nums">
+                    <tr className="bg-slate-50 dark:bg-slate-800/80 border-t-2 border-slate-200 dark:border-slate-700 font-medium text-slate-900 dark:text-slate-100 tabular-nums">
                       <td className="py-3.5 px-4 align-top">
-                        <div className="font-display font-semibold text-slate-900">
+                        <div className="font-display font-semibold text-slate-900 dark:text-slate-100">
                           Monthly Income Goal Summary
                         </div>
-                        <div className="text-[11px] text-slate-500">
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400">
                           Aggregated across {visibleDeals.length}{' '}
                           {platformFilter === 'all' ? 'saved' : PLATFORM_SPECS[platformFilter].shortLabel}{' '}
                           {visibleDeals.length === 1 ? 'deal' : 'deals'}
                         </div>
                       </td>
                       <td className="py-3.5 px-4 align-top text-right whitespace-nowrap">
-                        <div className="font-mono font-bold text-slate-900">
+                        <div className="font-mono font-bold text-slate-900 dark:text-slate-100">
                           {formatCurrencyExact(monthlyGoalSummary.aggregatedTotalDealRate, currency)}
                         </div>
-                        <div className="text-[11px] font-mono text-slate-500">
+                        <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                           Avg {formatCurrencyExact(monthlyGoalSummary.avgDealRate, currency)}/deal
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 align-top text-right text-slate-500 font-mono whitespace-nowrap">
+                      <td className="py-3.5 px-4 align-top text-right text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">
                         —
                       </td>
-                      <td className="py-3.5 px-4 align-top text-right text-slate-500 font-mono whitespace-nowrap">
+                      <td className="py-3.5 px-4 align-top text-right text-slate-500 dark:text-slate-400 font-mono whitespace-nowrap">
                         —
                       </td>
                       <td className="py-3.5 px-4 align-top text-right whitespace-nowrap">
                         {monthlyGoalSummary.targetMonthlyRevenue !== null ? (
                           <div>
-                            <div className="font-mono font-bold text-slate-900">
+                            <div className="font-mono font-bold text-slate-900 dark:text-slate-100">
                               {formatCurrencyExact(monthlyGoalSummary.targetMonthlyRevenue, currency)}/mo
                             </div>
-                            <div className="text-[11px] text-slate-500">
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400">
                               {monthlyGoalSummary.hasMixedGoals
                                 ? 'Avg monthly goal'
                                 : 'Monthly income goal'}
                             </div>
                           </div>
                         ) : (
-                          <span className="text-slate-400 italic font-normal">
+                          <span className="text-slate-400 dark:text-slate-500 italic font-normal">
                             Not set
                           </span>
                         )}
@@ -2326,14 +2372,14 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                         monthlyGoalSummary.exactDealsAtAvgRate !== null &&
                         monthlyGoalSummary.coveragePct !== null ? (
                           <div>
-                            <div className="font-mono font-bold text-blue-700">
+                            <div className="font-mono font-bold text-blue-700 dark:text-blue-400">
                               {monthlyGoalSummary.dealsNeededAtAvgRate}{' '}
                               {monthlyGoalSummary.dealsNeededAtAvgRate === 1
                                 ? 'deal'
                                 : 'deals'}
                               /mo needed at avg rate ({monthlyGoalSummary.exactDealsAtAvgRate.toFixed(1)}x)
                             </div>
-                            <div className="text-[11px] text-slate-600 mt-0.5 font-mono">
+                            <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5 font-mono">
                               Combined saved deals ({formatCurrencyExact(monthlyGoalSummary.aggregatedTotalDealRate, currency)}) cover{' '}
                               {monthlyGoalSummary.coveragePct.toFixed(0)}% of{' '}
                               {formatCurrencyExact(monthlyGoalSummary.targetMonthlyRevenue, currency)} goal
@@ -2344,7 +2390,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                             </div>
                           </div>
                         ) : (
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
                             Set Target Monthly Revenue on any deal to calculate deals needed per month.
                           </div>
                         )}
@@ -2356,30 +2402,30 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
             </div>
           </section>
 
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
           {/* Toolbar inside table container */}
-          <div className="px-5 py-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70">
-            <div className="text-xs text-slate-600 tabular-nums">
-              Comparing <strong className="text-slate-900">{visibleDeals.length}</strong>{' '}
+          <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70 dark:bg-slate-800/60">
+            <div className="text-xs text-slate-600 dark:text-slate-400 tabular-nums">
+              Comparing <strong className="text-slate-900 dark:text-slate-100">{visibleDeals.length}</strong>{' '}
               {platformFilter === 'all' ? 'saved' : PLATFORM_SPECS[platformFilter].shortLabel}{' '}
               {visibleDeals.length === 1 ? 'deal' : 'deals'}
               {visibleDeals.length > 1 && (
                 <>
-                  <span className="mx-1.5 text-slate-400">·</span>
-                  <strong className="text-blue-700">{differingCount}</strong> differing dimensions highlighted
+                  <span className="mx-1.5 text-slate-400 dark:text-slate-500">·</span>
+                  <strong className="text-blue-700 dark:text-blue-400">{differingCount}</strong> differing dimensions highlighted
                 </>
               )}
             </div>
 
             {visibleDeals.length > 1 && (
-              <div className="inline-flex items-center gap-1 p-1 bg-slate-200/70 rounded-lg">
+              <div className="inline-flex items-center gap-1 p-1 bg-slate-200/70 dark:bg-slate-800 rounded-lg">
                 <button
                   type="button"
                   onClick={() => setDiffOnly(false)}
                   className={`px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                     !diffOnly
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                   }`}
                 >
                   All Rows ({rows.length})
@@ -2389,8 +2435,8 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                   onClick={() => setDiffOnly(true)}
                   className={`px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                     diffOnly
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                   }`}
                 >
                   Differences Only ({differingCount})
@@ -2400,14 +2446,14 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
           </div>
 
           {savedDeals.length === 1 && (
-            <div className="px-5 py-3 bg-blue-50/60 border-b border-blue-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-700">
+            <div className="px-5 py-3 bg-blue-50/60 dark:bg-blue-950/30 border-b border-blue-100 dark:border-blue-900/60 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-700 dark:text-slate-300">
               <span>
                 Add at least one more deal snapshot (or change usage/exclusivity in the calculator and click &ldquo;Snapshot Current Quote&rdquo;) to highlight side-by-side differences.
               </span>
               <button
                 type="button"
                 onClick={onLoadSampleComparison}
-                className="font-semibold text-blue-700 hover:underline cursor-pointer"
+                className="font-semibold text-blue-700 dark:text-blue-400 hover:underline cursor-pointer"
               >
                 Add Sample Comparison Deal
               </button>
@@ -2418,10 +2464,10 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[720px]">
               <thead>
-                <tr className="border-b border-slate-200 bg-white">
+                <tr className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                   <th
                     scope="col"
-                    className="w-56 p-4 align-bottom text-xs font-semibold text-slate-500 sticky left-0 bg-white z-10 border-r border-slate-100"
+                    className="w-56 p-4 align-bottom text-xs font-semibold text-slate-500 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 z-10 border-r border-slate-100 dark:border-slate-800"
                   >
                     Deal Dimension
                   </th>
@@ -2429,7 +2475,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                     <th
                       key={deal.id}
                       scope="col"
-                      className="p-4 align-top min-w-[230px] border-r last:border-r-0 border-slate-100"
+                      className="p-4 align-top min-w-[230px] border-r last:border-r-0 border-slate-100 dark:border-slate-800"
                     >
                       <div className="space-y-2">
                         {editingId === deal.id ? (
@@ -2443,20 +2489,20 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                 if (e.key === 'Escape') setEditingId(null);
                               }}
                               autoFocus
-                              className="w-full px-2 py-1 text-xs font-semibold border border-blue-500 rounded bg-white text-slate-900 focus:outline-none"
+                              className="w-full px-2 py-1 text-xs font-semibold border border-blue-500 rounded bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:outline-none"
                             />
                             <button
                               type="button"
                               onClick={() => commitRename(deal.id)}
                               aria-label="Confirm rename"
-                              className="p-1 text-emerald-700 hover:bg-emerald-50 rounded cursor-pointer"
+                              className="p-1 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 rounded cursor-pointer"
                             >
                               <Check className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         ) : (
                           <div className="flex items-start justify-between gap-2">
-                            <span className="font-display text-sm font-semibold text-slate-900 leading-snug">
+                            <span className="font-display text-sm font-semibold text-slate-900 dark:text-slate-100 leading-snug">
                               {deal.name}
                             </span>
                             <button
@@ -2466,14 +2512,14 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                 setEditingName(deal.name);
                               }}
                               aria-label={`Rename ${deal.name}`}
-                              className="p-1 text-slate-400 hover:text-slate-700 rounded cursor-pointer shrink-0"
+                              className="p-1 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded cursor-pointer shrink-0"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         )}
 
-                        <div className="text-[11px] font-normal text-slate-500">
+                        <div className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
                           Saved {new Date(deal.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           <span className="mx-1">·</span>
                           {deal.result.followerTier.label}
@@ -2483,8 +2529,8 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                           const dev = benchmarkDeviations.get(deal.id);
                           if (!dev || !dev.isOutlier) return null;
                           return (
-                            <div className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium bg-amber-100 text-amber-950 border border-amber-300 rounded-sm">
-                              <AlertTriangle className="w-3 h-3 text-amber-700 shrink-0" aria-hidden="true" />
+                            <div className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium bg-amber-100 dark:bg-amber-950/80 text-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-700 rounded-sm">
+                              <AlertTriangle className="w-3 h-3 text-amber-700 dark:text-amber-400 shrink-0" aria-hidden="true" />
                               <span>
                                 {dev.deviationPct >= 0 ? '+' : ''}
                                 {dev.deviationPct.toFixed(1)}% vs. Benchmark
@@ -2498,7 +2544,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                             {deal.tags.map((tag) => (
                               <span
                                 key={`hdr-tag-${deal.id}-${tag}`}
-                                className="px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200 rounded-sm"
+                                className="px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-sm"
                               >
                                 {tag}
                               </span>
@@ -2510,7 +2556,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onLoadDealIntoCalculator(deal)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded transition-colors cursor-pointer"
                           >
                             <Upload className="w-3 h-3" aria-hidden="true" />
                             Load
@@ -2518,7 +2564,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onDeleteDeal(deal.id)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-red-700 hover:bg-red-50 rounded transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3 h-3" aria-hidden="true" />
                             Remove
@@ -2530,24 +2576,24 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-100 text-xs sm:text-sm">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs sm:text-sm">
                 {/* Negotiation Context: Tags & Notes Rows */}
-                <tr className="bg-slate-50/90">
+                <tr className="bg-slate-50/90 dark:bg-slate-800/70">
                   <td
                     colSpan={visibleDeals.length + 1}
-                    className="px-4 py-2 text-xs font-semibold text-slate-700 font-display"
+                    className="px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 font-display"
                   >
                     Negotiation Context
                   </td>
                 </tr>
-                <tr className="bg-white hover:bg-slate-50/50 transition-colors">
+                <tr className="bg-white dark:bg-slate-900 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
                   <th
                     scope="row"
-                    className="p-4 align-top font-medium text-slate-700 sticky left-0 z-10 border-r border-slate-100 bg-white"
+                    className="p-4 align-top font-medium text-slate-700 dark:text-slate-200 sticky left-0 z-10 border-r border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900"
                   >
                     <div className="flex flex-col gap-0.5">
                       <span>Deal Tags</span>
-                      <span className="text-[11px] font-normal text-slate-500">
+                      <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
                         Priority &amp; pipeline stage labels
                       </span>
                     </div>
@@ -2558,7 +2604,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                     return (
                       <td
                         key={`tags-${deal.id}`}
-                        className="p-4 align-top border-r last:border-r-0 border-slate-100 text-xs"
+                        className="p-4 align-top border-r last:border-r-0 border-slate-100 dark:border-slate-800 text-xs"
                       >
                         <div className="space-y-2">
                           {dealTags.length > 0 ? (
@@ -2566,7 +2612,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                               {dealTags.map((tag) => (
                                 <span
                                   key={`cell-tag-${deal.id}-${tag}`}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium bg-slate-100 text-slate-800 border border-slate-200 rounded-md"
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-md"
                                 >
                                   <span>{tag}</span>
                                   {isEditingTags && (
@@ -2579,7 +2625,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                         )
                                       }
                                       aria-label={`Remove ${tag} tag`}
-                                      className="text-slate-500 hover:text-red-700 cursor-pointer"
+                                      className="text-slate-500 dark:text-slate-400 hover:text-red-700 dark:hover:text-red-400 cursor-pointer"
                                     >
                                       <X className="w-3 h-3" aria-hidden="true" />
                                     </button>
@@ -2588,11 +2634,11 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                               ))}
                             </div>
                           ) : (
-                            <p className="text-slate-400 italic">No tags assigned</p>
+                            <p className="text-slate-400 dark:text-slate-500 italic">No tags assigned</p>
                           )}
 
                           {isEditingTags ? (
-                            <div className="space-y-2 pt-1 border-t border-slate-100">
+                            <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800">
                               <div className="flex flex-wrap gap-1">
                                 {DEFAULT_DEAL_TAGS.map((presetTag) => {
                                   const active = dealTags.includes(presetTag);
@@ -2608,8 +2654,8 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                       }}
                                       className={`px-2 py-0.5 text-[11px] font-medium rounded-md border transition-colors cursor-pointer ${
                                         active
-                                          ? 'bg-blue-700 text-white border-blue-700'
-                                          : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                                          ? 'bg-blue-700 dark:bg-blue-600 text-white border-blue-700 dark:border-blue-600'
+                                          : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                                       }`}
                                     >
                                       {presetTag}
@@ -2637,7 +2683,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                     }
                                   }}
                                   placeholder="Add custom tag..."
-                                  className="flex-1 px-2 py-1 text-[11px] border border-slate-300 rounded bg-white text-slate-900 focus:outline-none focus:border-blue-600"
+                                  className="flex-1 px-2 py-1 text-[11px] border border-slate-300 dark:border-slate-700 rounded bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-600"
                                 />
                                 <button
                                   type="button"
@@ -2650,7 +2696,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                       setNewCustomTagText('');
                                     }
                                   }}
-                                  className="px-2 py-1 text-[11px] font-medium text-white bg-blue-700 hover:bg-blue-800 rounded cursor-pointer"
+                                  className="px-2 py-1 text-[11px] font-medium text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 rounded cursor-pointer"
                                 >
                                   Add
                                 </button>
@@ -2660,7 +2706,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                     setEditingTagsId(null);
                                     setNewCustomTagText('');
                                   }}
-                                  className="px-2 py-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 cursor-pointer"
+                                  className="px-2 py-1 text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer"
                                 >
                                   Done
                                 </button>
@@ -2673,7 +2719,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                 setEditingTagsId(deal.id);
                                 setNewCustomTagText('');
                               }}
-                              className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-700 hover:text-blue-800 cursor-pointer"
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer"
                             >
                               <Tag className="w-3 h-3" aria-hidden="true" />
                               {dealTags.length > 0 ? 'Edit tags' : 'Add tags'}
@@ -2684,14 +2730,14 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                     );
                   })}
                 </tr>
-                <tr className="bg-white hover:bg-slate-50/50 transition-colors">
+                <tr className="bg-white dark:bg-slate-900 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
                   <th
                     scope="row"
-                    className="p-4 align-top font-medium text-slate-700 sticky left-0 z-10 border-r border-slate-100 bg-white"
+                    className="p-4 align-top font-medium text-slate-700 dark:text-slate-200 sticky left-0 z-10 border-r border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900"
                   >
                     <div className="flex flex-col gap-0.5">
                       <span>Negotiation Notes</span>
-                      <span className="text-[11px] font-normal text-slate-500">
+                      <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
                         Deal-specific context &amp; counter terms
                       </span>
                     </div>
@@ -2702,7 +2748,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                     return (
                       <td
                         key={`notes-${deal.id}`}
-                        className="p-4 align-top border-r last:border-r-0 border-slate-100 text-xs"
+                        className="p-4 align-top border-r last:border-r-0 border-slate-100 dark:border-slate-800 text-xs"
                       >
                         {isEditingNotes ? (
                           <div className="space-y-2">
@@ -2712,20 +2758,20 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                               onChange={(e) => setEditingNotesText(e.target.value)}
                               placeholder="Add negotiation context..."
                               autoFocus
-                              className="w-full px-2.5 py-1.5 text-xs border border-blue-500 rounded-md bg-white text-slate-900 focus:outline-none resize-y"
+                              className="w-full px-2.5 py-1.5 text-xs border border-blue-500 rounded-md bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none resize-y"
                             />
                             <div className="flex items-center gap-2">
                               <button
                                 type="button"
                                 onClick={() => commitNotesUpdate(deal.id)}
-                                className="px-2.5 py-1 text-[11px] font-medium text-white bg-blue-700 hover:bg-blue-800 rounded cursor-pointer"
+                                className="px-2.5 py-1 text-[11px] font-medium text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-500 rounded cursor-pointer"
                               >
                                 Save Note
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setEditingNotesId(null)}
-                                className="px-2 py-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 cursor-pointer"
+                                className="px-2 py-1 text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer"
                               >
                                 Cancel
                               </button>
@@ -2734,11 +2780,11 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                         ) : (
                           <div className="space-y-1.5">
                             {hasNotes ? (
-                              <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
+                              <p className="text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
                                 {deal.notes}
                               </p>
                             ) : (
-                              <p className="text-slate-400 italic">
+                              <p className="text-slate-400 dark:text-slate-500 italic">
                                 No negotiation notes added
                               </p>
                             )}
@@ -2748,7 +2794,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                 setEditingNotesId(deal.id);
                                 setEditingNotesText(deal.notes ?? '');
                               }}
-                              className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-700 hover:text-blue-800 cursor-pointer"
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer"
                             >
                               <Edit3 className="w-3 h-3" aria-hidden="true" />
                               {hasNotes ? 'Edit note' : 'Add note'}
@@ -2767,10 +2813,10 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                   if (sectionRows.length === 0) return null;
                   return (
                     <React.Fragment key={sectionName}>
-                      <tr className="bg-slate-50/90">
+                      <tr className="bg-slate-50/90 dark:bg-slate-800/70">
                         <td
                           colSpan={visibleDeals.length + 1}
-                          className="px-4 py-2 text-xs font-semibold text-slate-700 font-display"
+                          className="px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 font-display"
                         >
                           {sectionName}
                         </td>
@@ -2780,22 +2826,22 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                           key={row.id}
                           className={
                             row.differs && visibleDeals.length > 1
-                              ? 'bg-amber-50/35 hover:bg-amber-50/60 transition-colors'
-                              : 'bg-white hover:bg-slate-50/60 transition-colors'
+                              ? 'bg-amber-50/35 dark:bg-amber-950/20 hover:bg-amber-50/60 dark:hover:bg-amber-950/35 transition-colors'
+                              : 'bg-white dark:bg-slate-900 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors'
                           }
                         >
                           <th
                             scope="row"
-                            className={`p-4 align-top font-medium text-slate-700 sticky left-0 z-10 border-r border-slate-100 ${
+                            className={`p-4 align-top font-medium text-slate-700 dark:text-slate-200 sticky left-0 z-10 border-r border-slate-100 dark:border-slate-800 ${
                               row.differs && visibleDeals.length > 1
-                                ? 'bg-amber-50/60'
-                                : 'bg-white'
+                                ? 'bg-amber-50 dark:bg-amber-950'
+                                : 'bg-white dark:bg-slate-900'
                             }`}
                           >
                             <div className="flex flex-col gap-0.5">
                               <span>{row.label}</span>
                               {row.differs && visibleDeals.length > 1 && (
-                                <span className="text-[11px] font-semibold text-amber-800">
+                                <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
                                   Differs across deals
                                 </span>
                               )}
@@ -2830,11 +2876,11 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                             return (
                               <td
                                 key={`${row.id}-${deal.id}`}
-                                className={`p-4 align-top border-r last:border-r-0 border-slate-100 tabular-nums transition-colors ${
+                                className={`p-4 align-top border-r last:border-r-0 border-slate-100 dark:border-slate-800 tabular-nums transition-colors ${
                                   density
                                     ? density.cellClass
                                     : isBenchmarkOutlierCell
-                                    ? 'bg-amber-50'
+                                    ? 'bg-amber-50 dark:bg-amber-950/35'
                                     : ''
                                 }`}
                               >
@@ -2842,9 +2888,9 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                   className={`${
                                     row.isPrimaryMetric
                                       ? `font-mono text-base font-bold ${
-                                          density ? density.textClass : 'text-slate-900'
+                                          density ? density.textClass : 'text-slate-900 dark:text-slate-100'
                                         }`
-                                      : 'font-medium text-slate-900'
+                                      : 'font-medium text-slate-900 dark:text-slate-100'
                                   } ${
                                     row.section === 'Tiered Packages' ||
                                     row.section === 'Valuation & Economics'
@@ -2856,15 +2902,15 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                   {isHighestTotal && (
                                     <span
                                       className={`text-[11px] font-sans font-semibold ${
-                                        density ? density.badgeTextClass : 'text-blue-700'
+                                        density ? density.badgeTextClass : 'text-blue-700 dark:text-blue-400'
                                       }`}
                                     >
                                       Highest
                                     </span>
                                   )}
                                   {isBenchmarkOutlierCell && (
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-sans font-semibold bg-amber-100 text-amber-950 border border-amber-300 rounded-sm">
-                                      <AlertTriangle className="w-3 h-3 text-amber-700 shrink-0" aria-hidden="true" />
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-sans font-semibold bg-amber-100 dark:bg-amber-950/90 text-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-700 rounded-sm">
+                                      <AlertTriangle className="w-3 h-3 text-amber-700 dark:text-amber-400 shrink-0" aria-hidden="true" />
                                       &gt;25% deviation
                                     </span>
                                   )}
@@ -2875,8 +2921,8 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                                       density
                                         ? density.subTextClass
                                         : isBenchmarkOutlierCell
-                                        ? 'text-amber-900 font-semibold'
-                                        : 'text-slate-500'
+                                        ? 'text-amber-900 dark:text-amber-300 font-semibold'
+                                        : 'text-slate-500 dark:text-slate-400'
                                     }`}
                                   >
                                     {row.subValues[idx]}
@@ -2893,32 +2939,32 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
               </tbody>
               {monthlyGoalSummary && (
                 <tfoot>
-                  <tr className="bg-slate-50 border-t-2 border-slate-200 text-xs sm:text-sm tabular-nums">
+                  <tr className="bg-slate-50 dark:bg-slate-800/80 border-t-2 border-slate-200 dark:border-slate-700 text-xs sm:text-sm tabular-nums">
                     <th
                       scope="row"
-                      className="p-4 align-top font-semibold text-slate-900 sticky left-0 z-10 border-r border-slate-200 bg-slate-50"
+                      className="p-4 align-top font-semibold text-slate-900 dark:text-slate-100 sticky left-0 z-10 border-r border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
                     >
                       <div className="font-display">Monthly Goal Aggregate</div>
-                      <div className="text-[11px] font-normal text-slate-500 mt-0.5">
+                      <div className="text-[11px] font-normal text-slate-500 dark:text-slate-400 mt-0.5">
                         Sum Total Deal Rate vs. Monthly Goal
                       </div>
                     </th>
                     <td
                       colSpan={visibleDeals.length}
-                      className="p-4 align-top text-slate-900"
+                      className="p-4 align-top text-slate-900 dark:text-slate-100"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-4">
                         <div>
-                          <span className="text-xs text-slate-500">
+                          <span className="text-xs text-slate-500 dark:text-slate-400">
                             Aggregated Total Deal Rate ({visibleDeals.length}{' '}
                             {visibleDeals.length === 1 ? 'deal' : 'deals'}):{' '}
                           </span>
-                          <strong className="font-mono text-slate-900">
+                          <strong className="font-mono text-slate-900 dark:text-slate-100">
                             {formatCurrencyExact(monthlyGoalSummary.aggregatedTotalDealRate, currency)}
                           </strong>
-                          <span className="text-slate-400 mx-2">·</span>
-                          <span className="text-xs text-slate-500">Avg Rate: </span>
-                          <strong className="font-mono text-slate-900">
+                          <span className="text-slate-400 dark:text-slate-500 mx-2">·</span>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">Avg Rate: </span>
+                          <strong className="font-mono text-slate-900 dark:text-slate-100">
                             {formatCurrencyExact(monthlyGoalSummary.avgDealRate, currency)}
                           </strong>
                         </div>
@@ -2926,7 +2972,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                         {monthlyGoalSummary.targetMonthlyRevenue !== null &&
                         monthlyGoalSummary.dealsNeededAtAvgRate !== null &&
                         monthlyGoalSummary.coveragePct !== null ? (
-                          <div className="font-mono font-semibold text-blue-700">
+                          <div className="font-mono font-semibold text-blue-700 dark:text-blue-400">
                             {monthlyGoalSummary.dealsNeededAtAvgRate}{' '}
                             {monthlyGoalSummary.dealsNeededAtAvgRate === 1
                               ? 'deal'
@@ -2936,7 +2982,7 @@ export const DealComparisonView: React.FC<DealComparisonViewProps> = ({
                             ({monthlyGoalSummary.coveragePct.toFixed(0)}% covered by combined deals)
                           </div>
                         ) : (
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
                             Add Target Monthly Revenue to compute required monthly deal volume.
                           </div>
                         )}

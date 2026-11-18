@@ -36,34 +36,42 @@ const STAGE_SPECS: Record<PipelineStageId, PipelineStageSpec> = {
   closed: {
     id: 'closed',
     label: 'Closed',
-    markerClass: 'bg-emerald-700 border-emerald-800',
-    nodeBorderClass: 'border-emerald-300 bg-emerald-50/40 hover:bg-emerald-50',
-    nodeActiveClass: 'border-emerald-700 bg-emerald-50 ring-2 ring-emerald-700/15',
-    labelTextClass: 'text-emerald-800',
+    markerClass: 'bg-emerald-700 dark:bg-emerald-500 border-emerald-800 dark:border-emerald-400',
+    nodeBorderClass:
+      'border-emerald-300 dark:border-emerald-800/80 bg-emerald-50/40 dark:bg-emerald-950/45 hover:bg-emerald-50 dark:hover:bg-emerald-950/70',
+    nodeActiveClass:
+      'border-emerald-700 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-950/75 ring-2 ring-emerald-700/15 dark:ring-emerald-500/25',
+    labelTextClass: 'text-emerald-800 dark:text-emerald-400',
   },
   pending: {
     id: 'pending',
     label: 'In Negotiation',
-    markerClass: 'bg-amber-600 border-amber-700',
-    nodeBorderClass: 'border-amber-300 bg-amber-50/40 hover:bg-amber-50',
-    nodeActiveClass: 'border-amber-700 bg-amber-50 ring-2 ring-amber-700/15',
-    labelTextClass: 'text-amber-800',
+    markerClass: 'bg-amber-600 dark:bg-amber-500 border-amber-700 dark:border-amber-400',
+    nodeBorderClass:
+      'border-amber-300 dark:border-amber-800/80 bg-amber-50/40 dark:bg-amber-950/45 hover:bg-amber-50 dark:hover:bg-amber-950/70',
+    nodeActiveClass:
+      'border-amber-700 dark:border-amber-500 bg-amber-50 dark:bg-amber-950/75 ring-2 ring-amber-700/15 dark:ring-amber-500/25',
+    labelTextClass: 'text-amber-800 dark:text-amber-400',
   },
   priority: {
     id: 'priority',
     label: 'High Priority',
-    markerClass: 'bg-blue-700 border-blue-800',
-    nodeBorderClass: 'border-blue-300 bg-blue-50/40 hover:bg-blue-50',
-    nodeActiveClass: 'border-blue-700 bg-blue-50 ring-2 ring-blue-700/15',
-    labelTextClass: 'text-blue-800',
+    markerClass: 'bg-blue-700 dark:bg-blue-500 border-blue-800 dark:border-blue-400',
+    nodeBorderClass:
+      'border-blue-300 dark:border-blue-800/80 bg-blue-50/40 dark:bg-blue-950/45 hover:bg-blue-50 dark:hover:bg-blue-950/70',
+    nodeActiveClass:
+      'border-blue-700 dark:border-blue-500 bg-blue-50 dark:bg-blue-950/75 ring-2 ring-blue-700/15 dark:ring-blue-500/25',
+    labelTextClass: 'text-blue-800 dark:text-blue-400',
   },
   draft: {
     id: 'draft',
     label: 'Draft / Initial',
-    markerClass: 'bg-slate-500 border-slate-600',
-    nodeBorderClass: 'border-slate-300 bg-white hover:bg-slate-50',
-    nodeActiveClass: 'border-slate-900 bg-slate-50 ring-2 ring-slate-900/10',
-    labelTextClass: 'text-slate-700',
+    markerClass: 'bg-slate-500 dark:bg-slate-400 border-slate-600 dark:border-slate-300',
+    nodeBorderClass:
+      'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800',
+    nodeActiveClass:
+      'border-slate-900 dark:border-slate-400 bg-slate-50 dark:bg-slate-800 ring-2 ring-slate-900/10 dark:ring-slate-400/25',
+    labelTextClass: 'text-slate-700 dark:text-slate-300',
   },
 };
 
@@ -351,42 +359,42 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
   return (
     <section
       aria-label="Deal Pipeline Timeline visualizer"
-      className="bg-white border border-slate-200 rounded-xl overflow-hidden"
+      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden"
     >
       {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-200 bg-slate-50/70 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+      <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/70 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <Calendar className="w-4 h-4 text-blue-700 shrink-0" aria-hidden="true" />
-            <h2 className="font-display text-base font-semibold text-slate-900">
+            <Calendar className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0" aria-hidden="true" />
+            <h2 className="font-display text-base font-semibold text-slate-900 dark:text-slate-100">
               Deal Pipeline Timeline
             </h2>
-            <span className="text-xs text-slate-500 font-mono tabular-nums">
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-mono tabular-nums">
               · {timelineLayout.nodes.length}{' '}
               {timelineLayout.nodes.length === 1 ? 'milestone' : 'milestones'} ·{' '}
               {formatSpanDuration(timelineLayout.spanMs)}
             </span>
           </div>
-          <p className="text-xs text-slate-600 mt-0.5">
-            Plots saved deals proportionally along a horizontal <code className="font-mono text-[11px] text-slate-700">savedAt</code> date axis to track negotiation stage and rate progression over time.
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+            Plots saved deals proportionally along a horizontal <code className="font-mono text-[11px] text-slate-700 dark:text-slate-300">savedAt</code> date axis to track negotiation stage and rate progression over time.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 shrink-0">
           {/* Closed vs Active Pipeline Summary */}
           <div className="flex flex-wrap items-center gap-3 text-xs tabular-nums">
-            <span className="text-slate-600">
+            <span className="text-slate-600 dark:text-slate-400">
               Closed:{' '}
-              <strong className="font-mono text-emerald-800">
+              <strong className="font-mono text-emerald-800 dark:text-emerald-400">
                 {formatCurrencyExact(pipelineTotals.closedValue, currency)}
               </strong>
             </span>
-            <span className="text-slate-300" aria-hidden="true">
+            <span className="text-slate-300 dark:text-slate-600" aria-hidden="true">
               |
             </span>
-            <span className="text-slate-600">
+            <span className="text-slate-600 dark:text-slate-400">
               Active Pipeline:{' '}
-              <strong className="font-mono text-slate-900">
+              <strong className="font-mono text-slate-900 dark:text-slate-100">
                 {formatCurrencyExact(pipelineTotals.activePipelineValue, currency)}
               </strong>
             </span>
@@ -396,7 +404,7 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
           <div
             role="group"
             aria-label="Timeline layout mode"
-            className="inline-flex items-center gap-1 p-1 bg-slate-100 rounded-lg"
+            className="inline-flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg"
           >
             <button
               type="button"
@@ -404,8 +412,8 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
               onClick={() => setViewMode('track')}
               className={`px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                 viewMode === 'track'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
               }`}
             >
               Timeline Track
@@ -416,8 +424,8 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
               onClick={() => setViewMode('swimlanes')}
               className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                 viewMode === 'swimlanes'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
               }`}
             >
               <Layers className="w-3.5 h-3.5" aria-hidden="true" />
@@ -428,7 +436,7 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
       </div>
 
       {/* Stage Filter & Legend Bar */}
-      <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+      <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
         <div
           role="group"
           aria-label="Filter timeline by negotiation stage"
@@ -440,8 +448,8 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
             onClick={() => setStageFilter('all')}
             className={`px-2.5 py-1 text-xs font-medium rounded-md border transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
               stageFilter === 'all'
-                ? 'bg-slate-900 text-white border-slate-900'
-                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                ? 'bg-slate-900 dark:bg-blue-600 text-white border-slate-900 dark:border-blue-600'
+                : 'bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
             }`}
           >
             All Stages ({chronologicalDeals.length})
@@ -459,10 +467,10 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
                 onClick={() => setStageFilter(id)}
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md border transition-colors whitespace-nowrap shrink-0 ${
                   count === 0 && !active
-                    ? 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed'
+                    ? 'bg-slate-50 dark:bg-slate-900/50 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800 cursor-not-allowed'
                     : active
-                    ? 'bg-slate-900 text-white border-slate-900 cursor-pointer'
-                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50 cursor-pointer'
+                    ? 'bg-slate-900 dark:bg-blue-600 text-white border-slate-900 dark:border-blue-600 cursor-pointer'
+                    : 'bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer'
                 }`}
               >
                 <span
@@ -477,15 +485,15 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
           })}
         </div>
 
-        <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
-          <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+        <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 shrink-0" aria-hidden="true" />
           <span>Click any deal milestone to inspect notes &amp; progression</span>
         </div>
       </div>
 
       {/* Horizontal Timeline Canvas */}
       {timelineLayout.nodes.length === 0 ? (
-        <div className="p-8 text-center text-xs text-slate-500">
+        <div className="p-8 text-center text-xs text-slate-500 dark:text-slate-400">
           No deals match the selected pipeline stage filter.
         </div>
       ) : (
@@ -501,14 +509,14 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
                   <div
                     key={`grid-tick-${idx}`}
                     style={{ left: `${tick.pct}%` }}
-                    className="absolute top-0 bottom-[44px] w-px bg-slate-100 pointer-events-none"
+                    className="absolute top-0 bottom-[44px] w-px bg-slate-100 dark:bg-slate-800 pointer-events-none"
                     aria-hidden="true"
                   />
                 ))}
 
                 {/* Horizontal Axis Line */}
                 <div
-                  className="absolute left-0 right-0 bottom-[44px] h-0.5 bg-slate-200"
+                  className="absolute left-0 right-0 bottom-[44px] h-0.5 bg-slate-200 dark:bg-slate-800"
                   aria-hidden="true"
                 />
 
@@ -532,7 +540,7 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
                           height: `${Math.max(4, stemHeightPx)}px`,
                         }}
                         className={`absolute w-px -translate-x-1/2 pointer-events-none transition-colors ${
-                          isSelected ? 'bg-blue-600' : 'bg-slate-300'
+                          isSelected ? 'bg-blue-600 dark:bg-blue-400' : 'bg-slate-300 dark:bg-slate-700'
                         }`}
                         aria-hidden="true"
                       />
@@ -565,7 +573,7 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
                               {spec.label}
                             </span>
                           </span>
-                          <span className="font-mono text-[11px] font-bold text-slate-900 shrink-0 tabular-nums">
+                          <span className="font-mono text-[11px] font-bold text-slate-900 dark:text-slate-100 shrink-0 tabular-nums">
                             {formatCurrency(
                               node.deal.result.breakdown.totalRecommendedRate,
                               currency
@@ -573,20 +581,20 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
                           </span>
                         </div>
 
-                        <div className="text-[11px] font-semibold text-slate-900 truncate leading-tight">
+                        <div className="text-[11px] font-semibold text-slate-900 dark:text-slate-100 truncate leading-tight">
                           {node.deal.name}
                         </div>
 
-                        <div className="flex items-center justify-between gap-1 text-[10px] text-slate-500 font-mono tabular-nums">
+                        <div className="flex items-center justify-between gap-1 text-[10px] text-slate-500 dark:text-slate-400 font-mono tabular-nums">
                           <span className="truncate">{node.shortTimestamp}</span>
                           {node.deltaFromPrev !== null && (
                             <span
                               className={`shrink-0 font-semibold ${
                                 node.deltaFromPrev > 0
-                                  ? 'text-emerald-700'
+                                  ? 'text-emerald-700 dark:text-emerald-400'
                                   : node.deltaFromPrev < 0
-                                  ? 'text-red-700'
-                                  : 'text-slate-500'
+                                  ? 'text-red-700 dark:text-red-400'
+                                  : 'text-slate-500 dark:text-slate-400'
                               }`}
                             >
                               {node.deltaFromPrev > 0 ? '+' : ''}
@@ -604,7 +612,7 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
                         style={{ left: `${node.xPct}%` }}
                         className={`absolute bottom-[38px] -translate-x-1/2 w-3.5 h-3.5 rounded-xs border-2 cursor-pointer transition-transform z-20 ${
                           isSelected
-                            ? `${spec.markerClass} scale-125 ring-2 ring-blue-600/30`
+                            ? `${spec.markerClass} scale-125 ring-2 ring-blue-600/30 dark:ring-blue-400/40`
                             : `${spec.markerClass} hover:scale-110`
                         }`}
                       />
@@ -619,8 +627,8 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
                     style={{ left: `${tick.pct}%` }}
                     className="absolute bottom-2 -translate-x-1/2 flex flex-col items-center pointer-events-none"
                   >
-                    <div className="w-px h-2 bg-slate-300 mb-1" aria-hidden="true" />
-                    <span className="text-[11px] font-mono text-slate-500 whitespace-nowrap tabular-nums">
+                    <div className="w-px h-2 bg-slate-300 dark:bg-slate-700 mb-1" aria-hidden="true" />
+                    <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums">
                       {tick.label}
                     </span>
                   </div>
@@ -634,19 +642,19 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
                   return (
                     <div
                       key={`swimlane-${row.spec.id}`}
-                      className="grid grid-cols-12 border border-slate-200 rounded-lg overflow-hidden bg-slate-50/40"
+                      className="grid grid-cols-12 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden bg-slate-50/40 dark:bg-slate-950/50"
                     >
-                      <div className="col-span-2 px-3 py-3 bg-white border-r border-slate-200 flex flex-col justify-center">
+                      <div className="col-span-2 px-3 py-3 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-center">
                         <div className="inline-flex items-center gap-1.5">
                           <span
                             className={`w-2.5 h-2.5 rounded-xs border shrink-0 ${row.spec.markerClass}`}
                             aria-hidden="true"
                           />
-                          <span className="text-xs font-semibold text-slate-900">
+                          <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
                             {row.spec.label}
                           </span>
                         </div>
-                        <span className="text-[11px] font-mono text-slate-500 mt-0.5 tabular-nums">
+                        <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
                           {row.nodes.length}{' '}
                           {row.nodes.length === 1 ? 'deal' : 'deals'}
                         </span>
@@ -660,12 +668,12 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
                           <div
                             key={`lane-tick-${row.spec.id}-${idx}`}
                             style={{ left: `${tick.pct}%` }}
-                            className="absolute top-0 bottom-0 w-px bg-slate-200/70 pointer-events-none"
+                            className="absolute top-0 bottom-0 w-px bg-slate-200/70 dark:bg-slate-800 pointer-events-none"
                             aria-hidden="true"
                           />
                         ))}
                         <div
-                          className="absolute left-0 right-0 top-1/2 h-px bg-slate-200 pointer-events-none"
+                          className="absolute left-0 right-0 top-1/2 h-px bg-slate-200 dark:bg-slate-800 pointer-events-none"
                           aria-hidden="true"
                         />
 
@@ -686,17 +694,17 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
                               }`}
                             >
                               <div className="flex items-center justify-between gap-1.5">
-                                <span className="text-[11px] font-semibold text-slate-900 truncate">
+                                <span className="text-[11px] font-semibold text-slate-900 dark:text-slate-100 truncate">
                                   {node.deal.name}
                                 </span>
-                                <span className="font-mono text-[11px] font-bold text-slate-900 shrink-0 tabular-nums">
+                                <span className="font-mono text-[11px] font-bold text-slate-900 dark:text-slate-100 shrink-0 tabular-nums">
                                   {formatCurrency(
                                     node.deal.result.breakdown.totalRecommendedRate,
                                     currency
                                   )}
                                 </span>
                               </div>
-                              <div className="text-[10px] font-mono text-slate-500 truncate tabular-nums">
+                              <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate tabular-nums">
                                 {node.shortTimestamp}
                               </div>
                             </button>
@@ -717,8 +725,8 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
                         style={{ left: `${tick.pct}%` }}
                         className="absolute top-0 -translate-x-1/2 flex flex-col items-center pointer-events-none"
                       >
-                        <div className="w-px h-1.5 bg-slate-300 mb-0.5" aria-hidden="true" />
-                        <span className="text-[11px] font-mono text-slate-500 whitespace-nowrap tabular-nums">
+                        <div className="w-px h-1.5 bg-slate-300 dark:bg-slate-700 mb-0.5" aria-hidden="true" />
+                        <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums">
                           {tick.label}
                         </span>
                       </div>
@@ -733,7 +741,7 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
 
       {/* Selected Milestone Inspector Strip */}
       {selectedNode && (
-        <div className="px-5 py-4 border-t border-slate-200 bg-slate-50/70 space-y-3">
+        <div className="px-5 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2 min-w-0">
               <span
@@ -742,16 +750,16 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
                 }`}
                 aria-hidden="true"
               />
-              <span className="text-xs font-semibold text-slate-500 font-mono tabular-nums">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 font-mono tabular-nums">
                 Milestone {selectedNodeIndex + 1} of {timelineLayout.nodes.length}
               </span>
-              <span className="text-slate-300" aria-hidden="true">
+              <span className="text-slate-300 dark:text-slate-600" aria-hidden="true">
                 ·
               </span>
-              <span className="font-display text-sm font-bold text-slate-900 truncate">
+              <span className="font-display text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
                 {selectedNode.deal.name}
               </span>
-              <span className="text-slate-300" aria-hidden="true">
+              <span className="text-slate-300 dark:text-slate-600" aria-hidden="true">
                 ·
               </span>
               <span
@@ -776,7 +784,7 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
                     }
                   }}
                   aria-label="Previous chronological deal"
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap shrink-0"
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap shrink-0"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
                   Prev
@@ -792,7 +800,7 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
                     }
                   }}
                   aria-label="Next chronological deal"
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap shrink-0"
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap shrink-0"
                 >
                   Next
                   <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
@@ -802,7 +810,7 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
               <button
                 type="button"
                 onClick={() => onLoadDealIntoCalculator(selectedNode.deal)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-slate-900 rounded-md hover:bg-slate-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-slate-900 dark:bg-blue-600 rounded-md hover:bg-slate-800 dark:hover:bg-blue-500 transition-colors cursor-pointer whitespace-nowrap shrink-0"
               >
                 <Upload className="w-3.5 h-3.5" aria-hidden="true" />
                 Load into Calculator
@@ -813,7 +821,7 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4 text-xs items-start">
             <div className="md:col-span-5 space-y-1.5 tabular-nums">
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="font-mono text-base font-bold text-slate-900">
+                <span className="font-mono text-base font-bold text-slate-900 dark:text-slate-100">
                   {formatCurrencyExact(
                     selectedNode.deal.result.breakdown.totalRecommendedRate,
                     currency
@@ -823,10 +831,10 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
                   <span
                     className={`inline-flex items-center gap-1 font-mono text-xs font-semibold ${
                       selectedNode.deltaFromPrev > 0
-                        ? 'text-emerald-700'
+                        ? 'text-emerald-700 dark:text-emerald-400'
                         : selectedNode.deltaFromPrev < 0
-                        ? 'text-red-700'
-                        : 'text-slate-600'
+                        ? 'text-red-700 dark:text-red-400'
+                        : 'text-slate-600 dark:text-slate-400'
                     }`}
                   >
                     {selectedNode.deltaFromPrev > 0 ? (
@@ -844,13 +852,13 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
                 )}
               </div>
 
-              <div className="text-[11px] text-slate-600">
-                Saved <span className="font-mono text-slate-800">{selectedNode.fullTimestamp}</span> ·{' '}
+              <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                Saved <span className="font-mono text-slate-800 dark:text-slate-200">{selectedNode.fullTimestamp}</span> ·{' '}
                 {PLATFORM_SPECS[selectedNode.deal.profile.platform].shortLabel} ·{' '}
                 {NICHE_BENCHMARKS[selectedNode.deal.profile.niche].label}
               </div>
 
-              <div className="text-[11px] text-slate-600 font-mono">
+              <div className="text-[11px] text-slate-600 dark:text-slate-400 font-mono">
                 Base {formatCurrencyExact(selectedNode.deal.result.breakdown.baseCreationFee, currency)} ·{' '}
                 Riders {formatCurrencyExact(selectedNode.deal.result.breakdown.totalCommercialRiders, currency)} ·{' '}
                 <span className="font-sans">
@@ -860,19 +868,19 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
               </div>
             </div>
 
-            <div className="md:col-span-7 bg-white border border-slate-200 rounded-lg p-3 space-y-1.5">
+            <div className="md:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3 space-y-1.5">
               <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                <span className="inline-flex items-center gap-1 font-semibold text-slate-700">
-                  <FileText className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
+                <span className="inline-flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
+                  <FileText className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" aria-hidden="true" />
                   Negotiation Notes &amp; Tags
                 </span>
-                <span className="text-slate-500">
+                <span className="text-slate-500 dark:text-slate-400">
                   {selectedNode.deal.tags && selectedNode.deal.tags.length > 0 ? (
                     <span className="inline-flex items-center gap-1.5">
                       {selectedNode.stage === 'closed' && (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" aria-hidden="true" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" aria-hidden="true" />
                       )}
-                      <span className="font-medium text-slate-700">
+                      <span className="font-medium text-slate-700 dark:text-slate-300">
                         {selectedNode.deal.tags.join(' · ')}
                       </span>
                     </span>
@@ -884,8 +892,8 @@ export const DealPipelineTimeline: React.FC<DealPipelineTimelineProps> = ({
               <p
                 className={`text-xs leading-relaxed ${
                   selectedNode.deal.notes?.trim()
-                    ? 'text-slate-700'
-                    : 'text-slate-400 italic'
+                    ? 'text-slate-700 dark:text-slate-300'
+                    : 'text-slate-400 dark:text-slate-500 italic'
                 }`}
               >
                 {selectedNode.deal.notes?.trim()

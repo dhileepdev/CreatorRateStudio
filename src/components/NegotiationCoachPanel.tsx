@@ -388,18 +388,18 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
   return (
     <section
       aria-label="AI Negotiating Coach"
-      className="bg-white border border-slate-200 rounded-xl overflow-hidden"
+      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden"
     >
       {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-200 bg-slate-50/70 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+      <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/70 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div>
           <div className="inline-flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-blue-700 shrink-0" aria-hidden="true" />
-            <h2 className="font-display text-base font-semibold text-slate-900">
+            <Sparkles className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0" aria-hidden="true" />
+            <h2 className="font-display text-base font-semibold text-slate-900 dark:text-slate-100">
               AI Negotiating Coach
             </h2>
           </div>
-          <p className="text-xs text-slate-600 mt-0.5">
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
             Select 2 or more saved deals to analyze fee discrepancies, commercial rights gaps, and negotiation notes into tailored counter-offer talking points.
           </p>
         </div>
@@ -414,9 +414,9 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                   block: 'start',
                 })
               }
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
             >
-              <Mail className="w-3.5 h-3.5 text-blue-700" aria-hidden="true" />
+              <Mail className="w-3.5 h-3.5 text-blue-700 dark:text-blue-400" aria-hidden="true" />
               Outreach Email
             </button>
           )}
@@ -424,7 +424,7 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
             <button
               type="button"
               onClick={handleCopyBrief}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
             >
               <Copy className="w-3.5 h-3.5" aria-hidden="true" />
               Copy Brief
@@ -434,7 +434,7 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
             type="button"
             onClick={handleAnalyze}
             disabled={selectedDeals.length < 2 || loading}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-700 rounded-lg hover:bg-blue-800 disabled:bg-slate-300 disabled:text-slate-600 disabled:cursor-not-allowed transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-700 dark:bg-blue-600 rounded-lg hover:bg-blue-800 dark:hover:bg-blue-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-600 dark:disabled:text-slate-500 disabled:cursor-not-allowed transition-colors cursor-pointer whitespace-nowrap shrink-0"
           >
             {loading ? (
               <>
@@ -457,22 +457,22 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
       </div>
 
       {/* Deal Selection & Strategy Focus */}
-      <div className="p-5 sm:p-6 space-y-5 border-b border-slate-100">
+      <div className="p-5 sm:p-6 space-y-5 border-b border-slate-100 dark:border-slate-800">
         {deals.length < 2 ? (
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-xs text-slate-600">
+          <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg p-4 text-xs text-slate-600 dark:text-slate-300">
             Save or display at least <strong>2 deals</strong> in the comparison view to unlock AI discrepancy analysis and counter-negotiation talking points.
           </div>
         ) : (
           <>
             <div className="space-y-2.5">
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                <span className="font-semibold text-slate-700">
+                <span className="font-semibold text-slate-700 dark:text-slate-300">
                   1. Select Deals to Compare ({selectedDeals.length} selected, min 2)
                 </span>
                 {selectionSummary && (
-                  <span className="font-mono text-slate-600 tabular-nums">
+                  <span className="font-mono text-slate-600 dark:text-slate-400 tabular-nums">
                     Rate spread:{' '}
-                    <strong className="text-slate-900">
+                    <strong className="text-slate-900 dark:text-slate-100">
                       {formatCurrencyExact(selectionSummary.spread, currency)}
                     </strong>{' '}
                     ({formatCurrencyExact(selectionSummary.minRate, currency)} →{' '}
@@ -494,27 +494,27 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                       aria-pressed={isSelected}
                       className={`text-left p-3.5 rounded-lg border transition-colors cursor-pointer flex items-start gap-2.5 ${
                         isSelected
-                          ? 'border-blue-600 bg-blue-50/40'
-                          : 'border-slate-200 bg-white hover:bg-slate-50'
+                          ? 'border-blue-600 dark:border-blue-500 bg-blue-50/40 dark:bg-blue-950/40'
+                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 hover:bg-slate-50 dark:hover:bg-slate-800/70'
                       }`}
                     >
                       <span className="mt-0.5 shrink-0">
                         {isSelected ? (
-                          <CheckSquare className="w-4 h-4 text-blue-700" aria-hidden="true" />
+                          <CheckSquare className="w-4 h-4 text-blue-700 dark:text-blue-400" aria-hidden="true" />
                         ) : (
-                          <Square className="w-4 h-4 text-slate-400" aria-hidden="true" />
+                          <Square className="w-4 h-4 text-slate-400 dark:text-slate-500" aria-hidden="true" />
                         )}
                       </span>
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-baseline justify-between gap-2">
-                          <span className="text-xs font-semibold text-slate-900 truncate">
+                          <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
                             {deal.name}
                           </span>
-                          <span className="font-mono text-xs font-bold text-slate-900 shrink-0 tabular-nums">
+                          <span className="font-mono text-xs font-bold text-slate-900 dark:text-slate-100 shrink-0 tabular-nums">
                             {formatCurrencyExact(deal.result.breakdown.totalRecommendedRate, currency)}
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-500 font-mono tabular-nums">
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono tabular-nums">
                           {PLATFORM_SPECS[deal.profile.platform].shortLabel} · Base{' '}
                           {formatCurrencyExact(deal.result.breakdown.baseCreationFee, currency)} · Riders{' '}
                           {formatCurrencyExact(deal.result.breakdown.totalCommercialRiders, currency)}
@@ -524,7 +524,7 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                             {deal.tags.map((tag) => (
                               <span
                                 key={`coach-tag-${deal.id}-${tag}`}
-                                className="px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200 rounded-sm"
+                                className="px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-sm"
                               >
                                 {tag}
                               </span>
@@ -533,7 +533,9 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                         )}
                         <p
                           className={`text-[11px] leading-snug line-clamp-2 ${
-                            hasNotes ? 'text-slate-700' : 'text-slate-400 italic'
+                            hasNotes
+                              ? 'text-slate-700 dark:text-slate-300'
+                              : 'text-slate-400 dark:text-slate-500 italic'
                           }`}
                         >
                           {hasNotes
@@ -550,17 +552,17 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
             {/* Strategy Focus */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
               <div>
-                <div className="text-xs font-semibold text-slate-700">
+                <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   2. Counter-Negotiation Posture
                 </div>
-                <div className="text-[11px] text-slate-500">
+                <div className="text-[11px] text-slate-500 dark:text-slate-400">
                   {FOCUS_OPTIONS.find((f) => f.id === focus)?.hint}
                 </div>
               </div>
               <div
                 role="group"
                 aria-label="Counter-negotiation focus"
-                className="inline-flex flex-wrap items-center gap-1 p-1 bg-slate-100 rounded-lg"
+                className="inline-flex flex-wrap items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg"
               >
                 {FOCUS_OPTIONS.map((opt) => (
                   <button
@@ -570,8 +572,8 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                     onClick={() => setFocus(opt.id)}
                     className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                       focus === opt.id
-                        ? 'bg-white text-slate-900 shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
+                        ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
                     }`}
                   >
                     {opt.label}
@@ -586,20 +588,20 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
         {error && (
           <div
             role="alert"
-            className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start justify-between gap-3 text-xs text-red-900"
+            className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/70 rounded-lg flex items-start justify-between gap-3 text-xs text-red-900 dark:text-red-200"
           >
             <div className="flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-red-700 shrink-0 mt-0.5" aria-hidden="true" />
+              <AlertCircle className="w-4 h-4 text-red-700 dark:text-red-400 shrink-0 mt-0.5" aria-hidden="true" />
               <div>
                 <div className="font-semibold">Unable to generate coaching analysis</div>
-                <div className="text-red-800 mt-0.5">{error}</div>
+                <div className="text-red-800 dark:text-red-300 mt-0.5">{error}</div>
               </div>
             </div>
             <button
               type="button"
               onClick={handleAnalyze}
               disabled={selectedDeals.length < 2 || loading}
-              className="px-3 py-1.5 text-xs font-medium text-red-800 bg-white border border-red-300 rounded-md hover:bg-red-50 cursor-pointer shrink-0"
+              className="px-3 py-1.5 text-xs font-medium text-red-800 dark:text-red-200 bg-white dark:bg-slate-900 border border-red-300 dark:border-red-700 rounded-md hover:bg-red-50 dark:hover:bg-red-950/60 cursor-pointer shrink-0"
             >
               Retry
             </button>
@@ -609,9 +611,9 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
 
       {/* Analysis Output */}
       {analysis && (
-        <div className="p-5 sm:p-6 space-y-6 bg-white">
+        <div className="p-5 sm:p-6 space-y-6 bg-white dark:bg-slate-900">
           {isStale && (
-            <div className="px-3.5 py-2.5 bg-amber-50 border border-amber-200 rounded-lg flex flex-wrap items-center justify-between gap-2 text-xs text-amber-900">
+            <div className="px-3.5 py-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/70 rounded-lg flex flex-wrap items-center justify-between gap-2 text-xs text-amber-900 dark:text-amber-200">
               <span>
                 Deal selection, notes, or negotiation posture changed since this brief was generated.
               </span>
@@ -619,7 +621,7 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                 type="button"
                 onClick={handleAnalyze}
                 disabled={selectedDeals.length < 2 || loading}
-                className="font-semibold text-amber-950 underline hover:no-underline cursor-pointer"
+                className="font-semibold text-amber-950 dark:text-amber-100 underline hover:no-underline cursor-pointer"
               >
                 Re-analyze with updated inputs
               </button>
@@ -628,46 +630,46 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
 
           {/* Executive Summary + Counter-Offer Targets */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-            <div className="lg:col-span-7 border border-slate-200 rounded-lg p-4 bg-slate-50/50 space-y-2">
-              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            <div className="lg:col-span-7 border border-slate-200 dark:border-slate-800 rounded-lg p-4 bg-slate-50/50 dark:bg-slate-800/50 space-y-2">
+              <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
                 Executive Discrepancy Assessment
               </div>
-              <p className="text-sm text-slate-800 leading-relaxed">
+              <p className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed">
                 {analysis.executiveSummary}
               </p>
-              <div className="pt-2 border-t border-slate-200/80 text-xs text-slate-700 leading-relaxed">
-                <strong className="text-slate-900">Concession Playbook: </strong>
+              <div className="pt-2 border-t border-slate-200/80 dark:border-slate-700/80 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                <strong className="text-slate-900 dark:text-slate-100">Concession Playbook: </strong>
                 {analysis.counterOfferRecommendation.concessionPlaybook}
               </div>
             </div>
 
             <div className="lg:col-span-5 grid grid-cols-2 gap-3 tabular-nums">
-              <div className="border border-blue-200 bg-blue-50/50 rounded-lg p-4 flex flex-col justify-between">
-                <div className="text-[11px] font-semibold text-blue-900 uppercase tracking-wide">
+              <div className="border border-blue-200 dark:border-blue-800/70 bg-blue-50/50 dark:bg-blue-950/40 rounded-lg p-4 flex flex-col justify-between">
+                <div className="text-[11px] font-semibold text-blue-900 dark:text-blue-300 uppercase tracking-wide">
                   Recommended Anchor
                 </div>
-                <div className="font-mono text-xl font-bold text-blue-900 mt-1">
+                <div className="font-mono text-xl font-bold text-blue-900 dark:text-blue-100 mt-1">
                   {formatCurrencyExact(
                     analysis.counterOfferRecommendation.recommendedAnchorRate,
                     currency
                   )}
                 </div>
-                <div className="text-[11px] text-blue-800 mt-1">
+                <div className="text-[11px] text-blue-800 dark:text-blue-300/90 mt-1">
                   Opening counter-offer quote
                 </div>
               </div>
 
-              <div className="border border-slate-200 bg-slate-50 rounded-lg p-4 flex flex-col justify-between">
-                <div className="text-[11px] font-semibold text-slate-700 uppercase tracking-wide">
+              <div className="border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 rounded-lg p-4 flex flex-col justify-between">
+                <div className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
                   Walk-Away Floor
                 </div>
-                <div className="font-mono text-xl font-bold text-slate-900 mt-1">
+                <div className="font-mono text-xl font-bold text-slate-900 dark:text-slate-100 mt-1">
                   {formatCurrencyExact(
                     analysis.counterOfferRecommendation.recommendedFloorRate,
                     currency
                   )}
                 </div>
-                <div className="text-[11px] text-slate-600 mt-1">
+                <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-1">
                   Minimum cash before trimming scope
                 </div>
               </div>
@@ -676,24 +678,24 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
 
           {/* Detected Fee & Scope Discrepancies */}
           <div className="space-y-3">
-            <h3 className="font-display text-sm font-semibold text-slate-900">
+            <h3 className="font-display text-sm font-semibold text-slate-900 dark:text-slate-100">
               Analyzed Fee &amp; Scope Discrepancies
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {analysis.keyDiscrepancies.map((item, idx) => (
                 <div
                   key={`disc-${idx}`}
-                  className="border border-slate-200 rounded-lg p-3.5 bg-white space-y-1"
+                  className="border border-slate-200 dark:border-slate-800 rounded-lg p-3.5 bg-white dark:bg-slate-950/60 space-y-1"
                 >
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-xs font-semibold text-slate-900">
+                    <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">
                       {item.dimension}
                     </span>
-                    <span className="font-mono text-[11px] font-semibold text-blue-700 shrink-0">
+                    <span className="font-mono text-[11px] font-semibold text-blue-700 dark:text-blue-400 shrink-0">
                       {item.deltaSummary}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                     {item.strategicImpact}
                   </p>
                 </div>
@@ -703,33 +705,33 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
 
           {/* Counter-Negotiation Talking Points */}
           <div className="space-y-3">
-            <h3 className="font-display text-sm font-semibold text-slate-900">
+            <h3 className="font-display text-sm font-semibold text-slate-900 dark:text-slate-100">
               Counter-Negotiation Talking Points
             </h3>
             <div className="space-y-3">
               {analysis.talkingPoints.map((tp, idx) => (
                 <div
                   key={`tp-${idx}`}
-                  className="border border-slate-200 rounded-lg p-4 bg-white space-y-2.5"
+                  className="border border-slate-200 dark:border-slate-800 rounded-lg p-4 bg-white dark:bg-slate-950/50 space-y-2.5"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
-                      <div className="text-xs sm:text-sm font-semibold text-slate-900">
+                      <div className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100">
                         {idx + 1}. {tp.title}
                       </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">
-                        Applies to: <strong className="text-slate-700">{tp.targetDealName}</strong>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Applies to: <strong className="text-slate-700 dark:text-slate-300">{tp.targetDealName}</strong>
                       </div>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => handleCopyScript(idx, tp.scriptQuote)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors cursor-pointer shrink-0"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md transition-colors cursor-pointer shrink-0 whitespace-nowrap"
                     >
                       {copiedScriptIdx === idx ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-emerald-700" aria-hidden="true" />
+                          <Check className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" aria-hidden="true" />
                           Copied
                         </>
                       ) : (
@@ -741,17 +743,17 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                     </button>
                   </div>
 
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    <strong className="text-slate-800">Why it works: </strong>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                    <strong className="text-slate-800 dark:text-slate-200">Why it works: </strong>
                     {tp.rationale}
                   </p>
 
-                  <div className="bg-slate-50 border border-slate-200/90 rounded-lg p-3 flex items-start gap-2.5">
+                  <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-lg p-3 flex items-start gap-2.5">
                     <MessageSquareQuote
-                      className="w-4 h-4 text-blue-700 shrink-0 mt-0.5"
+                      className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0 mt-0.5"
                       aria-hidden="true"
                     />
-                    <p className="text-xs sm:text-[13px] text-slate-800 leading-relaxed">
+                    <p className="text-xs sm:text-[13px] text-slate-800 dark:text-slate-200 leading-relaxed">
                       &ldquo;{tp.scriptQuote}&rdquo;
                     </p>
                   </div>
@@ -766,32 +768,32 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
       {emailTargetDeal && generatedOutreach && (
         <div
           ref={outreachSectionRef}
-          className="p-5 sm:p-6 border-t border-slate-200 bg-slate-50/40 space-y-4 scroll-mt-24"
+          className="p-5 sm:p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-950/40 space-y-4 scroll-mt-24"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="inline-flex items-center gap-2">
-                <Mail className="w-4 h-4 text-blue-700 shrink-0" aria-hidden="true" />
-                <h3 className="font-display text-sm sm:text-base font-semibold text-slate-900">
+                <Mail className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0" aria-hidden="true" />
+                <h3 className="font-display text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100">
                   Brand Sponsor Outreach Email Generator
                 </h3>
               </div>
-              <p className="text-xs text-slate-600 mt-0.5">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                 Synthesizes your deal notes, rate calculations, and AI Negotiating Coach posture into a copy-ready sponsor email.
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600 font-mono tabular-nums">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600 dark:text-slate-400 font-mono tabular-nums">
               <span>
                 Anchor:{' '}
-                <strong className="text-slate-900">
+                <strong className="text-slate-900 dark:text-slate-100">
                   {formatCurrencyExact(generatedOutreach.anchorRateUsd, currency)}
                 </strong>
               </span>
               <span aria-hidden="true">·</span>
               <span>
                 Floor:{' '}
-                <strong className="text-slate-900">
+                <strong className="text-slate-900 dark:text-slate-100">
                   {formatCurrencyExact(generatedOutreach.floorRateUsd, currency)}
                 </strong>
               </span>
@@ -807,7 +809,7 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
             <div>
               <label
                 htmlFor="outreach-target-deal"
-                className="block text-[11px] font-semibold text-slate-700 mb-1"
+                className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1"
               >
                 Target Deal Scenario
               </label>
@@ -818,7 +820,7 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                   setEmailTargetDealId(e.target.value);
                   setHasManualEmailEdit(false);
                 }}
-                className="w-full px-2.5 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-blue-600"
+                className="w-full px-2.5 py-2 text-xs bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600"
               >
                 {deals.map((d) => (
                   <option key={`outreach-opt-${d.id}`} value={d.id}>
@@ -832,7 +834,7 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
             <div>
               <label
                 htmlFor="outreach-brand-name"
-                className="block text-[11px] font-semibold text-slate-700 mb-1"
+                className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1"
               >
                 Brand Sponsor Name
               </label>
@@ -842,14 +844,14 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                 value={brandName}
                 onChange={(e) => setBrandName(e.target.value)}
                 placeholder="e.g., Acme FinTech"
-                className="w-full px-2.5 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600"
+                className="w-full px-2.5 py-2 text-xs bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-600"
               />
             </div>
 
             <div>
               <label
                 htmlFor="outreach-contact-name"
-                className="block text-[11px] font-semibold text-slate-700 mb-1"
+                className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1"
               >
                 Sponsor Contact (Optional)
               </label>
@@ -859,14 +861,14 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
                 placeholder="e.g., Sarah"
-                className="w-full px-2.5 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600"
+                className="w-full px-2.5 py-2 text-xs bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-600"
               />
             </div>
 
             <div>
               <label
                 htmlFor="outreach-creator-name"
-                className="block text-[11px] font-semibold text-slate-700 mb-1"
+                className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1"
               >
                 Your Name
               </label>
@@ -876,7 +878,7 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                 value={creatorName}
                 onChange={(e) => setCreatorName(e.target.value)}
                 placeholder="e.g., Alex Rivera"
-                className="w-full px-2.5 py-2 text-xs bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600"
+                className="w-full px-2.5 py-2 text-xs bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-600"
               />
             </div>
           </div>
@@ -898,8 +900,8 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                   }}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                     emailTemplateId === 'ai_coach_draft'
-                      ? 'bg-blue-700 text-white border-blue-700'
-                      : 'bg-white text-blue-800 border-blue-300 hover:bg-blue-50'
+                      ? 'bg-blue-700 dark:bg-blue-600 text-white border-blue-700 dark:border-blue-600'
+                      : 'bg-white dark:bg-slate-900 text-blue-800 dark:text-blue-400 border-blue-300 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/50'
                   }`}
                 >
                   <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
@@ -924,8 +926,8 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                     }}
                     className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                       active
-                        ? 'bg-slate-900 text-white border-slate-900'
-                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                        ? 'bg-slate-900 dark:bg-blue-600 text-white border-slate-900 dark:border-blue-600'
+                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                     }`}
                   >
                     {tpl.label}
@@ -938,7 +940,7 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
               <button
                 type="button"
                 onClick={handleResetOutreachDraft}
-                className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:text-blue-800 cursor-pointer whitespace-nowrap shrink-0"
+                className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer whitespace-nowrap shrink-0"
               >
                 <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
                 Reset to Template
@@ -947,19 +949,22 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
           </div>
 
           {/* Deal Notes & Coach Context Strip */}
-          <div className="px-3.5 py-2.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 flex flex-wrap items-center justify-between gap-2">
+          <div className="px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-600 dark:text-slate-400 flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <span className="font-semibold text-slate-800">Deal Notes Input: </span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200">Deal Notes Input: </span>
               {emailTargetDeal.notes?.trim() ? (
-                <span className="text-slate-700">{emailTargetDeal.notes.trim()}</span>
+                <span className="text-slate-700 dark:text-slate-300">{emailTargetDeal.notes.trim()}</span>
               ) : (
-                <span className="italic text-slate-500">
+                <span className="italic text-slate-500 dark:text-slate-400">
                   No notes saved on &ldquo;{emailTargetDeal.name}&rdquo; yet — add negotiation notes in the matrix below to weave specific brand feedback into this email.
                 </span>
               )}
             </div>
-            <div className="text-[11px] text-slate-500 shrink-0">
-              Posture: <strong className="text-slate-700">{FOCUS_OPTIONS.find((f) => f.id === focus)?.label}</strong>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 shrink-0">
+              Posture:{' '}
+              <strong className="text-slate-700 dark:text-slate-300">
+                {FOCUS_OPTIONS.find((f) => f.id === focus)?.label}
+              </strong>
               {analysis ? ' · Enriched with AI Coach' : ''}
             </div>
           </div>
@@ -970,8 +975,8 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
               <label htmlFor="outreach-subject" className="sr-only">
                 Email Subject
               </label>
-              <div className="flex-1 flex items-center bg-white border border-slate-300 rounded-lg px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-600/15">
-                <span className="text-xs font-semibold text-slate-500 mr-2 shrink-0">
+              <div className="flex-1 flex items-center bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-600/15">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 mr-2 shrink-0">
                   Subject:
                 </span>
                 <input
@@ -982,17 +987,17 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                     setEditedSubject(e.target.value);
                     setHasManualEmailEdit(true);
                   }}
-                  className="w-full text-xs sm:text-sm font-medium text-slate-900 bg-transparent focus:outline-none"
+                  className="w-full text-xs sm:text-sm font-medium text-slate-900 dark:text-slate-100 bg-transparent focus:outline-none"
                 />
               </div>
               <button
                 type="button"
                 onClick={() => handleCopyOutreachEmail('subject')}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
               >
                 {copiedEmailType === 'subject' ? (
                   <>
-                    <Check className="w-3.5 h-3.5 text-emerald-700" aria-hidden="true" />
+                    <Check className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" aria-hidden="true" />
                     Copied
                   </>
                 ) : (
@@ -1015,13 +1020,13 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
                 setEditedBody(e.target.value);
                 setHasManualEmailEdit(true);
               }}
-              className="w-full p-3.5 bg-white border border-slate-300 rounded-lg text-xs sm:text-[13px] text-slate-800 leading-relaxed focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15 resize-y"
+              className="w-full p-3.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-xs sm:text-[13px] text-slate-800 dark:text-slate-200 leading-relaxed focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15 resize-y"
             />
           </div>
 
           {/* Copy Footer */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-[11px] text-slate-500">
+            <div className="text-[11px] text-slate-500 dark:text-slate-400">
               {hasManualEmailEdit
                 ? 'Custom edits active — click Reset to Template to re-sync with deal changes.'
                 : analysis
@@ -1035,11 +1040,11 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
               <button
                 type="button"
                 onClick={() => handleCopyOutreachEmail('body')}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
               >
                 {copiedEmailType === 'body' ? (
                   <>
-                    <Check className="w-3.5 h-3.5 text-emerald-700" aria-hidden="true" />
+                    <Check className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" aria-hidden="true" />
                     Copied Body
                   </>
                 ) : (
@@ -1052,7 +1057,7 @@ export const NegotiationCoachPanel: React.FC<NegotiationCoachPanelProps> = ({
               <button
                 type="button"
                 onClick={() => handleCopyOutreachEmail('full')}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-slate-900 dark:bg-blue-600 rounded-lg hover:bg-slate-800 dark:hover:bg-blue-500 transition-colors cursor-pointer whitespace-nowrap shrink-0"
               >
                 {copiedEmailType === 'full' ? (
                   <>

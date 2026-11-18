@@ -299,3 +299,26 @@ export interface BenchmarkDeviation {
   direction: 'above' | 'below' | 'aligned';
 }
 
+export type ContractNegotiationTone =
+  | 'collaborative'
+  | 'firm_commercial'
+  | 'tiered_tradeoff';
+
+export type ContractCounterpartyType = 'direct_brand' | 'agency';
+
+export interface ContractClauseRebuttal {
+  clauseId: number;
+  clauseTitle: string;
+  leveragePoint: string;
+  emailRebuttal: string;
+  fallbackConcession: string;
+  walkAwayTrigger: string;
+}
+
+export interface ContractNegotiationStrategy {
+  dealTypeSummary: string;
+  negotiationPosture: string;
+  priorityOrder: string[];
+  clauseRebuttals: ContractClauseRebuttal[];
+  combinedReplyDraft: string;
+}

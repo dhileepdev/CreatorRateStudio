@@ -60,6 +60,61 @@ const FOCUS_INSTRUCTIONS: Record<string, string> = {
     'Prioritize monetizing paid usage rights, whitelisting ad access, and category exclusivity lockouts that create opportunity cost for the creator.',
 };
 
+interface ContractStrategyClausePayload {
+  clauseId: number;
+  clauseTitle: string;
+  category: string;
+  severity: 'warning' | 'critical';
+  redFlagPattern: string;
+  advice: string;
+  replacementText: string;
+}
+
+interface ContractStrategyDealContext {
+  platformLabel: string;
+  deliverableUnit: string;
+  nicheLabel: string;
+  followerTierLabel: string;
+  followerCount: number;
+  medianViews: number;
+  engagementRatePct: number;
+  usageRightsLabel: string;
+  whitelistingEnabled: boolean;
+  whitelistingExpirationDays: number;
+  exclusivityLabel: string;
+  turnaroundLabel: string;
+  includedRevisionRounds: number;
+  baseCreationFeeUsd: number;
+  usageRightsFeeUsd: number;
+  whitelistingFeeUsd: number;
+  exclusivityFeeUsd: number;
+  totalCommercialRidersUsd: number;
+  totalRecommendedRateUsd: number;
+}
+
+interface ContractStrategyRequestBody {
+  clauses?: ContractStrategyClausePayload[];
+  dealContext?: ContractStrategyDealContext;
+  tone?: string;
+  counterparty?: string;
+  brandName?: string;
+  currency?: {
+    code?: string;
+    symbol?: string;
+    rateFromUsd?: number;
+    decimals?: number;
+  };
+}
+
+const CONTRACT_TONE_GUIDANCE: Record<string, string> = {
+  collaborative:
+    'Use a warm, partner-focused tone that treats redlines as standard business hygiene while remaining firm on creator IP, payment certainty, and scope boundaries.',
+  firm_commercial:
+    'Use a crisp, executive talent-agency tone with unambiguous redline boundaries and clear commercial rationale for every rejected term.',
+  tiered_tradeoff:
+    'Frame every pushback around unbundled commercial pricing—offering paid options for extended usage, whitelisting, rush delivery, or exclusivity rather than flat refusals.',
+};
+
 type SupportedCurrency = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD' | 'JPY' | 'INR';
 
 interface FxRatesCacheEntry {
@@ -472,6 +527,280 @@ async function startServer() {
       }
       res.status(500).json({
         error: `Failed to generate negotiation coaching: ${msg}`,
+      });
+    }
+  });
+
+  app.post('/api/contract-negotiation-strategy', async (req: Request, res: Response) => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey.trim() === '' || apiKey === 'MY_GEMINI_API_KEY') {
+      res.status(500).json({
+        error:
+          'Gemini API key is not configured. Please check your GEMINI_API_KEY in Settings > Secrets.',
+      });
+      return;
+    }
+
+    const body = (req.body ?? {}) as ContractStrategyRequestBody;
+    const clauses = Array.isArray(body.clauses) ? body.clauses : [];
+
+    if (clauses.length === 0) {
+      res.status(400).json({
+        error:
+          'Flag at least 1 red-flag clause in the 15-clause contract audit to generate targeted AI rebuttals.',
+      });
+      return;
+    }
+
+    if (clauses.length > 15) {
+      res.status(400).json({
+        error: 'A maximum of 15 contract clauses can be analyzed per strategy request.',
+      });
+      return;
+    }
+
+    if (!body.dealContext || typeof body.dealContext.platformLabel !== 'string') {
+      res.status(400).json({
+        error: 'Current deal configuration context is required to tailor rebuttals.',
+      });
+      return;
+    }
+
+    const toneKey =
+      typeof body.tone === 'string' && body.tone in CONTRACT_TONE_GUIDANCE
+        ? body.tone
+        : 'collaborative';
+    const toneInstruction = CONTRACT_TONE_GUIDANCE[toneKey];
+
+    const counterpartyLabel =
+      body.counterparty === 'agency'
+        ? 'Media / Talent Agency acting on behalf of an End-Client'
+        : 'Direct Brand Sponsor marketing/legal team';
+
+    const brandLabel =
+      typeof body.brandName === 'string' && body.brandName.trim()
+        ? body.brandName.trim()
+        : '[Brand Name]';
+
+    const currencyCode =
+      typeof body.currency?.code === 'string' && body.currency.code.trim()
+        ? body.currency.code.trim().toUpperCase()
+        : 'USD';
+    const currencyRate =
+      typeof body.currency?.rateFromUsd === 'number' &&
+      Number.isFinite(body.currency.rateFromUsd) &&
+      body.currency.rateFromUsd > 0
+        ? body.currency.rateFromUsd
+        : 1;
+    const currencyDecimals =
+      typeof body.currency?.decimals === 'number' &&
+      Number.isInteger(body.currency.decimals) &&
+      body.currency.decimals >= 0
+        ? body.currency.decimals
+        : 2;
+
+    const formatLocalAmount = (usdAmount: number) => {
+      const converted = usdAmount * currencyRate;
+      const rounded = converted.toLocaleString('en-US', {
+        minimumFractionDigits: currencyDecimals,
+        maximumFractionDigits: currencyDecimals,
+      });
+      return `${currencyCode} ${rounded}`;
+    };
+
+    const dc = body.dealContext;
+    const structuredContext = {
+      dealType: {
+        platform: dc.platformLabel,
+        deliverable: dc.deliverableUnit,
+        niche: dc.nicheLabel,
+        followerTier: dc.followerTierLabel,
+        followerCount: dc.followerCount,
+        medianViews: dc.medianViews,
+        engagementRatePct: Number(dc.engagementRatePct.toFixed(2)),
+        usageRights: dc.usageRightsLabel,
+        whitelisting: dc.whitelistingEnabled
+          ? `Enabled (${dc.whitelistingExpirationDays}-day cap)`
+          : 'Not included',
+        exclusivity: dc.exclusivityLabel,
+        turnaround: dc.turnaroundLabel,
+        includedRevisions: dc.includedRevisionRounds,
+        counterparty: counterpartyLabel,
+        brandName: brandLabel,
+      },
+      calculatedFees: {
+        currencyCode,
+        baseCreationFee: formatLocalAmount(dc.baseCreationFeeUsd),
+        usageRightsFee: formatLocalAmount(dc.usageRightsFeeUsd),
+        whitelistingFee: formatLocalAmount(dc.whitelistingFeeUsd),
+        exclusivityFee: formatLocalAmount(dc.exclusivityFeeUsd),
+        totalCommercialRiders: formatLocalAmount(dc.totalCommercialRidersUsd),
+        totalRecommendedRate: formatLocalAmount(dc.totalRecommendedRateUsd),
+      },
+      flaggedRedFlagClauses: clauses.map((c) => ({
+        clauseId: c.clauseId,
+        clauseTitle: c.clauseTitle,
+        category: c.category,
+        severity: c.severity,
+        redFlagPattern: c.redFlagPattern,
+        creatorRiskSummary: c.advice,
+        benchmarkReplacementClause: c.replacementText,
+      })),
+    };
+
+    const ai = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
+
+    const systemInstruction = [
+      'You are a senior creator economy entertainment lawyer and sponsorship negotiation strategist.',
+      'Your task is to craft an actionable Negotiation Strategy and bespoke, deal-type-specific rebuttals for each flagged red-flag clause from the creator’s contract audit.',
+      `Negotiation tone & style: ${toneInstruction}`,
+      'Rules:',
+      '- Every rebuttal MUST explicitly adapt to the user’s current deal type (e.g., YouTube Long-Form Dedicated vs. Instagram Reel vs. TikTok vs. Stories vs. Cross-Post Bundle, the creator’s niche, usage rights tier, whitelisting, exclusivity scope, and calculated fee breakdown).',
+      '- Use the exact monetary amounts from calculatedFees in the specified currencyCode.',
+      '- Return one rebuttal entry in "clauseRebuttals" for EVERY clause in "flaggedRedFlagClauses", preserving its exact clauseId and clauseTitle.',
+      '- Ensure "emailRebuttal" is polite, commercially sharp, and ready to paste verbatim to the brand or agency contact.',
+      '- Ensure "fallbackConcession" gives a concrete priced add-on or bounded compromise (never giving away perpetual IP, blanket exclusivity, or unlimited revisions for free).',
+      '- Ensure "walkAwayTrigger" states a clear commercial boundary.',
+      `- Also produce "combinedReplyDraft": one cohesive, professional email body addressed to ${brandLabel} combining the redline rebuttals cleanly in priority order.`,
+    ].join('\n');
+
+    const prompt = `Generate a tailored Contract Negotiation Strategy and clause-by-clause AI rebuttals for this deal context and flagged clauses:\n\n${JSON.stringify(
+      structuredContext,
+      null,
+      2
+    )}`;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-4-hydrogen',
+        contents: prompt,
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              dealTypeSummary: {
+                type: Type.STRING,
+                description:
+                  '2-sentence summary explaining why the creator has strong commercial leverage given this specific deal type, niche, deliverable unit, and rate structure.',
+              },
+              negotiationPosture: {
+                type: Type.STRING,
+                description:
+                  'Strategic guidance on how to sequence and frame the redline conversation with this counterparty.',
+              },
+              priorityOrder: {
+                type: Type.ARRAY,
+                description:
+                  'Ordered list of flagged clauses from highest commercial priority to lowest (e.g., "#5 Perpetual Usage Rights — protect IP before negotiating Net terms").',
+                items: { type: Type.STRING },
+              },
+              clauseRebuttals: {
+                type: Type.ARRAY,
+                description:
+                  'One tailored rebuttal object per flagged clause in the input.',
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    clauseId: {
+                      type: Type.INTEGER,
+                      description: 'Exact clauseId from the flagged clause input.',
+                    },
+                    clauseTitle: {
+                      type: Type.STRING,
+                      description: 'Exact clauseTitle from the flagged clause input.',
+                    },
+                    leveragePoint: {
+                      type: Type.STRING,
+                      description:
+                        '1-2 sentence explanation of why this clause is especially risky or mispriced for this specific deal type.',
+                    },
+                    emailRebuttal: {
+                      type: Type.STRING,
+                      description:
+                        'Copy-ready 2-4 sentence rebuttal paragraph tailored to the deal type and counterparty.',
+                    },
+                    fallbackConcession: {
+                      type: Type.STRING,
+                      description:
+                        'Concrete priced trade-off or bounded compromise if the brand pushes back.',
+                    },
+                    walkAwayTrigger: {
+                      type: Type.STRING,
+                      description:
+                        'Clear boundary indicating when to pause or decline the agreement.',
+                    },
+                  },
+                  required: [
+                    'clauseId',
+                    'clauseTitle',
+                    'leveragePoint',
+                    'emailRebuttal',
+                    'fallbackConcession',
+                    'walkAwayTrigger',
+                  ],
+                },
+              },
+              combinedReplyDraft: {
+                type: Type.STRING,
+                description:
+                  'Complete ready-to-send email body combining all flagged clause rebuttals cleanly for the brand or agency contact.',
+              },
+            },
+            required: [
+              'dealTypeSummary',
+              'negotiationPosture',
+              'priorityOrder',
+              'clauseRebuttals',
+              'combinedReplyDraft',
+            ],
+          },
+        },
+      });
+
+      const rawText = (response.text ?? '').trim();
+      if (!rawText) {
+        res.status(502).json({
+          error:
+            'The AI Negotiation Strategy service returned an empty response. Please try again.',
+        });
+        return;
+      }
+
+      const parsed = JSON.parse(rawText);
+      res.json(parsed);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const lower = msg.toLowerCase();
+      if (
+        lower.includes('permission_denied') ||
+        lower.includes('api_key_invalid') ||
+        lower.includes('api key not valid') ||
+        lower.includes('403')
+      ) {
+        res.status(403).json({
+          error:
+            'Gemini API key was rejected. Please verify your API key in Settings > Secrets.',
+        });
+        return;
+      }
+      if (lower.includes('resource_exhausted') || lower.includes('429')) {
+        res.status(429).json({
+          error:
+            'Rate limit reached for the AI Negotiation Strategy service. Please wait a moment and try again.',
+        });
+        return;
+      }
+      res.status(500).json({
+        error: `Failed to generate contract negotiation strategy: ${msg}`,
       });
     }
   });

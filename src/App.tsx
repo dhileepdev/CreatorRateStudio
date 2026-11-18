@@ -8,6 +8,7 @@ import { Header } from './components/Header';
 import { ProfileScopePanel } from './components/ProfileScopePanel';
 import { ValuationPanel } from './components/ValuationPanel';
 import { CurrencyProvider, useCurrency } from './context/CurrencyContext';
+import { ThemeProvider } from './context/ThemeContext';
 import {
   CREATOR_PRESETS,
   PLATFORM_SPECS,
@@ -20,6 +21,7 @@ import {
   SavedDealSnapshot,
 } from './types/calculator';
 import {
+  applyInflationAdjustment,
   calculateDealRate,
   formatCurrencyExact,
   generateRateCardMarkdown,
@@ -60,6 +62,9 @@ function AppContent() {
   const [flaggedClauseIds, setFlaggedClauseIds] = useState<number[]>([1, 5, 12]);
   const [savedDeals, setSavedDeals] = useState<SavedDealSnapshot[]>(loadSavedDeals);
   const [sharedUrl, setSharedUrl] = useState<string | null>(null);
+  const [inflationEnabled, setInflationEnabled] = useState(false);
+  const [annualInflationPct, setAnnualInflationPct] = useState(3.5);
+  const [inflationYears, setInflationYears] = useState(1);
   const [toast, setToast] = useState<{
     message: string;
     showCompareLink?: boolean;
@@ -69,10 +74,17 @@ function AppContent() {
       : null
   );
 
-  const result = useMemo(
+  const baseResult = useMemo(
     () => calculateDealRate(profile, scope),
     [profile, scope]
   );
+
+  const inflationAdjustment = useMemo(() => {
+    if (!inflationEnabled) return null;
+    return applyInflationAdjustment(baseResult, annualInflationPct, inflationYears);
+  }, [baseResult, inflationEnabled, annualInflationPct, inflationYears]);
+
+  const result = inflationAdjustment ? inflationAdjustment.result : baseResult;
 
   useEffect(() => {
     try {
@@ -374,7 +386,7 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
       <Header
         activeView={activeView}
         savedDealsCount={savedDeals.length}
@@ -412,12 +424,12 @@ function AppContent() {
         ) : (
           <>
             {/* Top Workbench Intro & Mode Switcher */}
-            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 pb-2 border-b border-slate-200">
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-800">
               <div className="max-w-2xl">
-                <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 [text-wrap:balance]">
+                <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 [text-wrap:balance]">
                   Algorithmic Sponsorship Pricing & Contract Scope Workbench
                 </h1>
-                <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
                   Replace follower-count guesswork with median view velocity, verified niche CPMs, and explicit line-item pricing for paid ad usage, whitelisting, and category exclusivity.
                 </p>
               </div>
@@ -426,9 +438,9 @@ function AppContent() {
                 <button
                   type="button"
                   onClick={handleShareConfiguration}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium text-slate-800 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap"
+                  className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  <Share2 className="w-4 h-4 text-blue-700" aria-hidden="true" />
+                  <Share2 className="w-4 h-4 text-blue-700 dark:text-blue-400" aria-hidden="true" />
                   <span>Share Configuration</span>
                 </button>
                 <button
@@ -437,9 +449,9 @@ function AppContent() {
                     setActiveView('comparison');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium text-slate-800 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer whitespace-nowrap"
+                  className="inline-flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  <Scale className="w-4 h-4 text-blue-700" aria-hidden="true" />
+                  <Scale className="w-4 h-4 text-blue-700 dark:text-blue-400" aria-hidden="true" />
                   <span>
                     Compare Saved Deals ({savedDeals.length})
                   </span>
@@ -468,7 +480,15 @@ function AppContent() {
                 <ValuationPanel
                   profile={profile}
                   scope={scope}
+                  baseResult={baseResult}
                   result={result}
+                  inflationEnabled={inflationEnabled}
+                  annualInflationPct={annualInflationPct}
+                  inflationYears={inflationYears}
+                  inflationUpliftAmount={inflationAdjustment?.upliftAmount ?? 0}
+                  onToggleInflation={() => setInflationEnabled((prev) => !prev)}
+                  onChangeInflationPct={setAnnualInflationPct}
+                  onChangeInflationYears={setInflationYears}
                   savedDealsCount={savedDeals.length}
                   sharedUrl={sharedUrl}
                   onCopyRateCard={handleCopyRateCard}
@@ -511,10 +531,10 @@ function AppContent() {
       </main>
 
       {/* Quiet, Functional Footer */}
-      <footer className="border-t border-slate-200 bg-white mt-12">
-        <div className="max-w-[1320px] mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-slate-500">
+      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mt-12 transition-colors">
+        <div className="max-w-[1320px] mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-slate-500 dark:text-slate-400">
           <div>
-            <strong className="text-slate-700 font-semibold">
+            <strong className="text-slate-700 dark:text-slate-200 font-semibold">
               Creator Rate Studio
             </strong>{' '}
             · Client-side valuation engine. Financial inputs and saved deal comparisons stay strictly in your browser.
@@ -534,7 +554,7 @@ function AppContent() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-5 right-5 z-50 max-w-md bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg border border-slate-700 flex items-center gap-3 text-xs sm:text-sm"
+          className="fixed bottom-5 right-5 z-50 max-w-md bg-slate-900 dark:bg-slate-800 text-white px-4 py-3 rounded-xl shadow-lg border border-slate-700 dark:border-slate-600 flex items-center gap-3 text-xs sm:text-sm"
         >
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
           <span className="flex-1">{toast.message}</span>
@@ -567,8 +587,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <CurrencyProvider>
-      <AppContent />
-    </CurrencyProvider>
+    <ThemeProvider>
+      <CurrencyProvider>
+        <AppContent />
+      </CurrencyProvider>
+    </ThemeProvider>
   );
 }

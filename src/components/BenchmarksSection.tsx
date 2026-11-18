@@ -110,29 +110,32 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
   return (
     <section id="benchmarks" className="space-y-6 scroll-mt-24">
       <div>
-        <h2 className="font-display text-xl font-bold text-slate-900">
+        <h2 className="font-display text-xl font-bold text-slate-900 dark:text-slate-100">
           2026 Industry Sponsorship Benchmarks &amp; CPM Reference ({currency})
         </h2>
-        <p className="text-sm text-slate-600 mt-1">
+        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
           Cross-reference your median-view Base Creation Fee against published 2026 CreatiCalc, InfluenceFlow, and Gigapay benchmarks.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Follower Tier Table */}
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/70 flex items-center justify-between gap-2">
-            <h3 className="font-display text-sm font-semibold text-slate-900">
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/70 flex items-center justify-between gap-2">
+            <h3 className="font-display text-sm font-semibold text-slate-900 dark:text-slate-100">
               Average Organic Sponsorship Rates by Follower Tier
             </h3>
-            <span className="text-xs text-slate-500">
-              Your Tier: <strong className="text-blue-700">{result.followerTier.label}</strong>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              Your Tier:{' '}
+              <strong className="text-blue-700 dark:text-blue-400">
+                {result.followerTier.label}
+              </strong>
             </span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-500">
+                <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 bg-slate-50/40 dark:bg-slate-950/40">
                   <th className="py-2.5 px-4 font-semibold">Tier</th>
                   <th className="py-2.5 px-4 font-semibold">Followers</th>
                   <th className="py-2.5 px-4 font-semibold text-right">IG Reel</th>
@@ -141,7 +144,7 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
                   <th className="py-2.5 px-4 font-semibold text-right">Typical ER</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 tabular-nums">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 tabular-nums">
                 {INDUSTRY_TIER_BENCHMARKS.map((row) => {
                   const isCurrent = row.id === result.followerTier.id;
                   const suffix = row.isPlus ? '+' : '';
@@ -150,19 +153,19 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
                       key={row.id}
                       className={
                         isCurrent
-                          ? 'bg-blue-50/60 font-medium text-slate-900'
-                          : 'text-slate-700 hover:bg-slate-50/60'
+                          ? 'bg-blue-50/60 dark:bg-blue-950/40 font-medium text-slate-900 dark:text-slate-100'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50/60 dark:hover:bg-slate-800/40'
                       }
                     >
-                      <td className="py-2.5 px-4 font-semibold text-slate-900">
+                      <td className="py-2.5 px-4 font-semibold text-slate-900 dark:text-slate-100">
                         {row.tierName}
                         {isCurrent && (
-                          <span className="ml-1.5 text-[11px] text-blue-700 font-semibold">
+                          <span className="ml-1.5 text-[11px] text-blue-700 dark:text-blue-400 font-semibold">
                             (You)
                           </span>
                         )}
                       </td>
-                      <td className="py-2.5 px-4 font-mono text-slate-600">
+                      <td className="py-2.5 px-4 font-mono text-slate-600 dark:text-slate-400">
                         {row.followerRange}
                       </td>
                       <td className="py-2.5 px-4 font-mono text-right">
@@ -177,7 +180,7 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
                         {formatCurrency(row.youtubeLongFormUsd, currency)}
                         {suffix}
                       </td>
-                      <td className="py-2.5 px-4 font-mono text-right text-slate-600">
+                      <td className="py-2.5 px-4 font-mono text-right text-slate-600 dark:text-slate-400">
                         {row.typicalER}
                       </td>
                     </tr>
@@ -189,36 +192,36 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
         </div>
 
         {/* Niche CPM Table */}
-        <div className="lg:col-span-5 bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/70">
-            <h3 className="font-display text-sm font-semibold text-slate-900">
+        <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/70">
+            <h3 className="font-display text-sm font-semibold text-slate-900 dark:text-slate-100">
               2026 Verified Niche Sponsorship CPMs
             </h3>
           </div>
-          <div className="divide-y divide-slate-100 text-xs">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
             {Object.values(NICHE_BENCHMARKS).map((niche) => {
               const isCurrent = niche.id === profile.niche;
               return (
                 <div
                   key={niche.id}
                   className={`px-4 py-3 flex items-center justify-between gap-4 ${
-                    isCurrent ? 'bg-blue-50/60' : ''
+                    isCurrent ? 'bg-blue-50/60 dark:bg-blue-950/40' : ''
                   }`}
                 >
                   <div>
-                    <div className="font-semibold text-slate-900">
+                    <div className="font-semibold text-slate-900 dark:text-slate-100">
                       {niche.label}
                       {isCurrent && (
-                        <span className="ml-1.5 text-[11px] text-blue-700">
+                        <span className="ml-1.5 text-[11px] text-blue-700 dark:text-blue-400">
                           (Active)
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                       Default benchmark: {formatCurrency(niche.defaultCpm, currency)} / 1K views
                     </div>
                   </div>
-                  <div className="font-mono font-semibold text-slate-900 shrink-0">
+                  <div className="font-mono font-semibold text-slate-900 dark:text-slate-100 shrink-0">
                     {formatCurrency(niche.cpmMin, currency)} – {formatCurrency(niche.cpmMax, currency)}
                   </div>
                 </div>
@@ -232,17 +235,17 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
       <section
         id="annual-revenue"
         aria-label="Projected Annual Revenue calculator"
-        className="bg-white border border-slate-200 rounded-xl overflow-hidden"
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden"
       >
-        <div className="px-5 py-4 border-b border-slate-200 bg-slate-50/70 flex flex-wrap items-start justify-between gap-3">
+        <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/70 flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="inline-flex items-center gap-2">
-              <CalendarRange className="w-4 h-4 text-blue-700 shrink-0" aria-hidden="true" />
-              <h3 className="font-display text-base font-semibold text-slate-900">
+              <CalendarRange className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0" aria-hidden="true" />
+              <h3 className="font-display text-base font-semibold text-slate-900 dark:text-slate-100">
                 Projected Annual Revenue Calculator (12-Month Extrapolation)
               </h3>
             </div>
-            <p className="text-xs text-slate-600 mt-0.5">
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
               Extrapolates your deal rate and monthly sponsorship targets across 12 months based on your target campaign cadence.
             </p>
           </div>
@@ -252,7 +255,7 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
               <button
                 type="button"
                 onClick={() => setMonthlyTargetInput(String(savedMonthlyTargetUsd))}
-                className="text-xs font-medium text-blue-700 hover:text-blue-800 underline cursor-pointer whitespace-nowrap shrink-0"
+                className="text-xs font-medium text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline cursor-pointer whitespace-nowrap shrink-0"
               >
                 Use Saved Monthly Goal ({formatCurrencyExact(savedMonthlyTargetUsd, currency)})
               </button>
@@ -264,7 +267,7 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
             {/* Rate Basis & Optional Custom Rate */}
             <div className="lg:col-span-5 space-y-2.5">
-              <div className="text-xs font-semibold text-slate-700">
+              <div className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                 1. Deal Rate per Campaign
               </div>
               <div
@@ -312,8 +315,8 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
                       }}
                       className={`px-3 py-2 text-left rounded-lg border transition-colors cursor-pointer ${
                         active
-                          ? 'bg-slate-900 text-white border-slate-900'
-                          : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                          ? 'bg-slate-900 dark:bg-blue-600 text-white border-slate-900 dark:border-blue-600'
+                          : 'bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       <div className="text-[11px] font-medium whitespace-nowrap">
@@ -321,7 +324,7 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
                       </div>
                       <div
                         className={`text-xs font-mono font-bold tabular-nums mt-0.5 ${
-                          active ? 'text-blue-200' : 'text-slate-900'
+                          active ? 'text-blue-200 dark:text-blue-100' : 'text-slate-900 dark:text-slate-100'
                         }`}
                       >
                         {opt.rate !== null
@@ -337,7 +340,7 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
                 <div>
                   <label
                     htmlFor="annual-custom-rate"
-                    className="block text-[11px] font-semibold text-slate-600 mb-1"
+                    className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1"
                   >
                     Custom Campaign Rate (USD)
                   </label>
@@ -348,10 +351,10 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
                     step="any"
                     value={customDealRateInput}
                     onChange={(e) => setCustomDealRateInput(e.target.value)}
-                    className="w-full px-3 py-2 text-xs font-mono bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
+                    className="w-full px-3 py-2 text-xs font-mono bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
                   />
                   {currency !== 'USD' && activeDealRateUsd > 0 && (
-                    <div className="text-[11px] font-mono text-blue-700 mt-1">
+                    <div className="text-[11px] font-mono text-blue-700 dark:text-blue-400 mt-1">
                       ≈ {formatCurrencyExact(activeDealRateUsd, currency)} / campaign
                     </div>
                   )}
@@ -364,11 +367,11 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
               <div className="flex items-center justify-between gap-2">
                 <label
                   htmlFor="annual-campaign-freq"
-                  className="text-xs font-semibold text-slate-700"
+                  className="text-xs font-semibold text-slate-700 dark:text-slate-300"
                 >
                   2. Campaign Frequency (Deals / Month)
                 </label>
-                <span className="font-mono text-xs font-bold text-blue-700 tabular-nums">
+                <span className="font-mono text-xs font-bold text-blue-700 dark:text-blue-400 tabular-nums">
                   {formatNumber(projection.annualCampaignCount)} deals/yr
                 </span>
               </div>
@@ -382,7 +385,7 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
                   aria-label="Campaign frequency slider"
                   value={Math.min(12, Math.max(0.5, campaignsPerMonth || 0.5))}
                   onChange={(e) => setCampaignsPerMonthInput(e.target.value)}
-                  className="flex-1 accent-blue-700 cursor-pointer"
+                  className="flex-1 accent-blue-700 dark:accent-blue-500 cursor-pointer"
                 />
                 <input
                   id="annual-campaign-freq"
@@ -392,7 +395,7 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
                   step={0.5}
                   value={campaignsPerMonthInput}
                   onChange={(e) => setCampaignsPerMonthInput(e.target.value)}
-                  className="w-20 px-2.5 py-1.5 text-xs font-mono text-right bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-blue-600"
+                  className="w-20 px-2.5 py-1.5 text-xs font-mono text-right bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-600"
                 />
               </div>
 
@@ -407,8 +410,8 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
                       onClick={() => setCampaignsPerMonthInput(String(freq))}
                       className={`px-2.5 py-1 text-[11px] font-mono font-medium rounded-md border transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                         active
-                          ? 'bg-blue-700 text-white border-blue-700'
-                          : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                          ? 'bg-blue-700 dark:bg-blue-600 text-white border-blue-700 dark:border-blue-600'
+                          : 'bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
                       }`}
                     >
                       {freq}/mo
@@ -422,7 +425,7 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
             <div className="lg:col-span-3 space-y-2">
               <label
                 htmlFor="annual-monthly-target"
-                className="block text-xs font-semibold text-slate-700"
+                className="block text-xs font-semibold text-slate-700 dark:text-slate-300"
               >
                 3. Monthly Deal Target (USD)
               </label>
@@ -434,19 +437,19 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
                 value={monthlyTargetInput}
                 onChange={(e) => setMonthlyTargetInput(e.target.value)}
                 placeholder="e.g., 10000"
-                className="w-full px-3 py-2 text-xs sm:text-sm font-mono bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
+                className="w-full px-3 py-2 text-xs sm:text-sm font-mono bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15"
               />
-              <div className="text-[11px] text-slate-500 font-mono tabular-nums space-y-0.5">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono tabular-nums space-y-0.5">
                 <div>
                   12-Mo Goal:{' '}
-                  <strong className="text-slate-800">
+                  <strong className="text-slate-800 dark:text-slate-200">
                     {formatCurrencyExact(projection.annualTargetRevenue, currency)}
                   </strong>
                 </div>
                 {projection.campaignsNeededPerMonth !== null && (
                   <div>
                     Pace needed:{' '}
-                    <strong className="text-slate-800">
+                    <strong className="text-slate-800 dark:text-slate-200">
                       {projection.campaignsNeededPerMonth.toFixed(1)} deals/mo
                     </strong>
                   </div>
@@ -456,54 +459,54 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
           </div>
 
           {/* 12-Month Extrapolation Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-100 tabular-nums">
-            <div className="p-4 bg-blue-50/50 border border-blue-200 rounded-lg space-y-1">
-              <div className="text-[11px] font-semibold text-blue-900">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800 tabular-nums">
+            <div className="p-4 bg-blue-50/50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/70 rounded-lg space-y-1">
+              <div className="text-[11px] font-semibold text-blue-900 dark:text-blue-300">
                 Projected Annual Revenue
               </div>
-              <div className="font-mono text-xl sm:text-2xl font-bold text-blue-950">
+              <div className="font-mono text-xl sm:text-2xl font-bold text-blue-950 dark:text-blue-100">
                 {formatCurrencyExact(projection.projectedAnnualRevenue, currency)}
               </div>
-              <div className="text-[11px] text-blue-800 font-mono">
+              <div className="text-[11px] text-blue-800 dark:text-blue-300/90 font-mono">
                 {formatCurrencyExact(activeDealRateUsd, currency)} × {campaignsPerMonth}/mo × 12
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
-              <div className="text-[11px] font-semibold text-slate-600">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-lg space-y-1">
+              <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
                 Monthly Run Rate
               </div>
-              <div className="font-mono text-xl sm:text-2xl font-bold text-slate-900">
+              <div className="font-mono text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">
                 {formatCurrencyExact(projection.projectedMonthlyRevenue, currency)}
               </div>
-              <div className="text-[11px] text-slate-500 font-mono">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
                 {campaignsPerMonth} {campaignsPerMonth === 1 ? 'campaign' : 'campaigns'} / month
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
-              <div className="text-[11px] font-semibold text-slate-600">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-lg space-y-1">
+              <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
                 Est. Net After 15.3% SE Tax
               </div>
-              <div className="font-mono text-xl sm:text-2xl font-bold text-slate-900">
+              <div className="font-mono text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">
                 {formatCurrencyExact(projection.annualNetAfterTax, currency)}
               </div>
-              <div className="text-[11px] text-slate-500 font-mono">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
                 Tax reserve: {formatCurrencyExact(projection.annualSeTaxReserve, currency)}/yr
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-1">
-              <div className="text-[11px] font-semibold text-slate-600">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-lg space-y-1">
+              <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
                 Annual Variance vs. Goal
               </div>
               <div
                 className={`font-mono text-xl sm:text-2xl font-bold ${
                   projection.annualDelta === null
-                    ? 'text-slate-900'
+                    ? 'text-slate-900 dark:text-slate-100'
                     : projection.annualDelta >= 0
-                    ? 'text-emerald-800'
-                    : 'text-amber-800'
+                    ? 'text-emerald-800 dark:text-emerald-400'
+                    : 'text-amber-800 dark:text-amber-400'
                 }`}
               >
                 {projection.annualDelta !== null
@@ -513,7 +516,7 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
                     )}`
                   : '—'}
               </div>
-              <div className="text-[11px] text-slate-500 font-mono">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
                 {projection.targetAchievementPct !== null
                   ? `${projection.targetAchievementPct.toFixed(0)}% of 12-mo target`
                   : 'Set a monthly target'}
@@ -526,11 +529,11 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
             {projection.targetAchievementPct !== null && (
               <div className="space-y-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700">
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
                     {projection.annualDelta !== null && projection.annualDelta >= 0 ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" aria-hidden="true" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" aria-hidden="true" />
                     ) : (
-                      <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" aria-hidden="true" />
+                      <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" aria-hidden="true" />
                     )}
                     <span>
                       {projection.annualDelta !== null && projection.annualDelta >= 0
@@ -548,16 +551,16 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
                           )}/yr`}
                     </span>
                   </span>
-                  <span className="font-mono font-semibold text-slate-900 tabular-nums">
+                  <span className="font-mono font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
                     {projection.targetAchievementPct.toFixed(1)}%
                   </span>
                 </div>
-                <div className="h-2.5 w-full bg-slate-100 border border-slate-200 rounded-sm overflow-hidden">
+                <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-sm overflow-hidden">
                   <div
                     className={`h-full transition-all ${
                       projection.targetAchievementPct >= 100
-                        ? 'bg-emerald-700'
-                        : 'bg-blue-700'
+                        ? 'bg-emerald-700 dark:bg-emerald-500'
+                        : 'bg-blue-700 dark:bg-blue-500'
                     }`}
                     style={{
                       width: `${Math.min(100, Math.max(0, projection.targetAchievementPct))}%`,
@@ -572,18 +575,18 @@ export const BenchmarksSection: React.FC<BenchmarksSectionProps> = ({
               {projection.quarters.map((q) => (
                 <div
                   key={q.label}
-                  className="px-3.5 py-2.5 border border-slate-200 rounded-lg bg-white space-y-1"
+                  className="px-3.5 py-2.5 border border-slate-200 dark:border-slate-800 rounded-lg bg-white dark:bg-slate-950/60 space-y-1"
                 >
-                  <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500">
-                    <span className="font-semibold text-slate-700">{q.label}</span>
+                  <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">{q.label}</span>
                     <span className="font-mono">{q.campaignsCompleted} deals</span>
                   </div>
-                  <div className="font-mono text-sm font-bold text-slate-900 flex items-center gap-1">
-                    <TrendingUp className="w-3.5 h-3.5 text-blue-700 shrink-0" aria-hidden="true" />
+                  <div className="font-mono text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1">
+                    <TrendingUp className="w-3.5 h-3.5 text-blue-700 dark:text-blue-400 shrink-0" aria-hidden="true" />
                     {formatCurrencyExact(q.cumulativeGross, currency)}
                   </div>
                   {q.cumulativeTarget > 0 && (
-                    <div className="text-[11px] font-mono text-slate-500">
+                    <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                       Target: {formatCurrencyExact(q.cumulativeTarget, currency)}
                     </div>
                   )}

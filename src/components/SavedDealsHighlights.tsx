@@ -129,21 +129,21 @@ export const SavedDealsHighlights: React.FC<SavedDealsHighlightsProps> = ({
   return (
     <section
       aria-label="Saved Deals Highlights"
-      className="bg-white border border-slate-200 rounded-xl p-5 sm:p-6 space-y-4"
+      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 sm:p-6 space-y-4"
     >
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <div className="inline-flex items-center gap-2">
-            <Layers className="w-4 h-4 text-blue-700 shrink-0" aria-hidden="true" />
-            <h2 className="font-display text-base font-semibold text-slate-900">
+            <Layers className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0" aria-hidden="true" />
+            <h2 className="font-display text-base font-semibold text-slate-900 dark:text-slate-100">
               Saved Deals Highlights
             </h2>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5 tabular-nums">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 tabular-nums">
             Pipeline KPIs across{' '}
             {isFiltered ? (
               <>
-                <span className="font-medium text-slate-700">
+                <span className="font-medium text-slate-700 dark:text-slate-300">
                   {metrics.count} filtered
                 </span>{' '}
                 of {totalSavedCount} saved{' '}
@@ -158,29 +158,29 @@ export const SavedDealsHighlights: React.FC<SavedDealsHighlightsProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-slate-600 tabular-nums shrink-0">
-          <span className="font-mono font-semibold text-slate-900">
+        <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 tabular-nums shrink-0">
+          <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">
             {formatCurrencyExact(metrics.totalValue, currency)}
           </span>
-          <span className="text-slate-400">total pipeline</span>
+          <span className="text-slate-400 dark:text-slate-500">total pipeline</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         {/* KPI 1: Total Pending Value */}
-        <div className="border border-slate-200/80 rounded-lg p-3.5 bg-slate-50/50 flex flex-col justify-between">
+        <div className="border border-slate-200/80 dark:border-slate-800 rounded-lg p-3.5 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
+              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Total Pending Value
               </span>
-              <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" aria-hidden="true" />
+              <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" aria-hidden="true" />
             </div>
-            <div className="font-mono text-xl font-bold text-slate-900 tabular-nums mt-1.5">
+            <div className="font-mono text-xl font-bold text-slate-900 dark:text-slate-100 tabular-nums mt-1.5">
               {formatCurrencyExact(metrics.totalPendingValue, currency)}
             </div>
           </div>
-          <div className="mt-2 pt-2 border-t border-slate-200/70 flex items-center justify-between gap-2 text-[11px] text-slate-600 tabular-nums">
+          <div className="mt-2 pt-2 border-t border-slate-200/70 dark:border-slate-700/70 flex items-center justify-between gap-2 text-[11px] text-slate-600 dark:text-slate-400 tabular-nums">
             <span>
               {metrics.pendingCount} open{' '}
               {metrics.pendingCount === 1 ? 'deal' : 'deals'}
@@ -188,28 +188,28 @@ export const SavedDealsHighlights: React.FC<SavedDealsHighlightsProps> = ({
                 ? ` (${metrics.activeNegotiationCount} active)`
                 : ''}
             </span>
-            <span className="font-mono font-medium text-amber-700">
+            <span className="font-mono font-medium text-amber-700 dark:text-amber-400">
               {metrics.pendingSharePct.toFixed(0)}%
             </span>
           </div>
         </div>
 
         {/* KPI 2: Average Deal CPM */}
-        <div className="border border-slate-200/80 rounded-lg p-3.5 bg-slate-50/50 flex flex-col justify-between">
+        <div className="border border-slate-200/80 dark:border-slate-800 rounded-lg p-3.5 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
+              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Average Deal CPM
               </span>
-              <Activity className="w-3.5 h-3.5 text-blue-700 shrink-0" aria-hidden="true" />
+              <Activity className="w-3.5 h-3.5 text-blue-700 dark:text-blue-400 shrink-0" aria-hidden="true" />
             </div>
-            <div className="font-mono text-xl font-bold text-slate-900 tabular-nums mt-1.5">
+            <div className="font-mono text-xl font-bold text-slate-900 dark:text-slate-100 tabular-nums mt-1.5">
               {formatCurrencyExact(metrics.averageDealCpm, currency)}
             </div>
           </div>
-          <div className="mt-2 pt-2 border-t border-slate-200/70 flex items-center justify-between gap-2 text-[11px] text-slate-600 tabular-nums">
+          <div className="mt-2 pt-2 border-t border-slate-200/70 dark:border-slate-700/70 flex items-center justify-between gap-2 text-[11px] text-slate-600 dark:text-slate-400 tabular-nums">
             <span>Effective eCPM</span>
-            <span className="font-mono font-medium text-slate-900">
+            <span className="font-mono font-medium text-slate-900 dark:text-slate-100">
               {formatCurrencyExact(metrics.blendedEffectiveCpm, currency)} ·{' '}
               {formatNumber(metrics.totalMedianViews)} views
             </span>
@@ -217,19 +217,19 @@ export const SavedDealsHighlights: React.FC<SavedDealsHighlightsProps> = ({
         </div>
 
         {/* KPI 3: Average Deal Rate & Highest Proposal */}
-        <div className="border border-slate-200/80 rounded-lg p-3.5 bg-slate-50/50 flex flex-col justify-between">
+        <div className="border border-slate-200/80 dark:border-slate-800 rounded-lg p-3.5 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
+              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 Average Deal Rate
               </span>
-              <DollarSign className="w-3.5 h-3.5 text-emerald-700 shrink-0" aria-hidden="true" />
+              <DollarSign className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400 shrink-0" aria-hidden="true" />
             </div>
-            <div className="font-mono text-xl font-bold text-slate-900 tabular-nums mt-1.5">
+            <div className="font-mono text-xl font-bold text-slate-900 dark:text-slate-100 tabular-nums mt-1.5">
               {formatCurrencyExact(metrics.averageDealRate, currency)}
             </div>
           </div>
-          <div className="mt-2 pt-2 border-t border-slate-200/70 flex items-center justify-between gap-2 text-[11px] text-slate-600 tabular-nums">
+          <div className="mt-2 pt-2 border-t border-slate-200/70 dark:border-slate-700/70 flex items-center justify-between gap-2 text-[11px] text-slate-600 dark:text-slate-400 tabular-nums">
             <span className="truncate" title={metrics.highestDeal.name}>
               Top: {metrics.highestDeal.name}
             </span>
@@ -237,7 +237,7 @@ export const SavedDealsHighlights: React.FC<SavedDealsHighlightsProps> = ({
               <button
                 type="button"
                 onClick={() => onLoadDealIntoCalculator(metrics.highestDeal)}
-                className="inline-flex items-center gap-0.5 font-mono font-medium text-blue-700 hover:text-blue-800 whitespace-nowrap shrink-0 cursor-pointer"
+                className="inline-flex items-center gap-0.5 font-mono font-medium text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 whitespace-nowrap shrink-0 cursor-pointer"
                 title={`Load ${metrics.highestDeal.name} into calculator`}
               >
                 {formatCurrency(
@@ -247,7 +247,7 @@ export const SavedDealsHighlights: React.FC<SavedDealsHighlightsProps> = ({
                 <ArrowUpRight className="w-3 h-3" aria-hidden="true" />
               </button>
             ) : (
-              <span className="font-mono font-medium text-slate-900 whitespace-nowrap shrink-0">
+              <span className="font-mono font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap shrink-0">
                 {formatCurrency(
                   metrics.highestDeal.result.breakdown.totalRecommendedRate,
                   currency
@@ -258,28 +258,28 @@ export const SavedDealsHighlights: React.FC<SavedDealsHighlightsProps> = ({
         </div>
 
         {/* KPI 4: Closed Value & Commercial Rights Mix */}
-        <div className="border border-slate-200/80 rounded-lg p-3.5 bg-slate-50/50 flex flex-col justify-between">
+        <div className="border border-slate-200/80 dark:border-slate-800 rounded-lg p-3.5 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
+              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 {metrics.closedCount > 0 ? 'Closed Deal Value' : 'Commercial Rights Mix'}
               </span>
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-700 shrink-0" aria-hidden="true" />
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400 shrink-0" aria-hidden="true" />
             </div>
-            <div className="font-mono text-xl font-bold text-slate-900 tabular-nums mt-1.5">
+            <div className="font-mono text-xl font-bold text-slate-900 dark:text-slate-100 tabular-nums mt-1.5">
               {metrics.closedCount > 0
                 ? formatCurrencyExact(metrics.closedValue, currency)
                 : `${metrics.commercialRidersSharePct.toFixed(1)}%`}
             </div>
           </div>
-          <div className="mt-2 pt-2 border-t border-slate-200/70 flex items-center justify-between gap-2 text-[11px] text-slate-600 tabular-nums">
+          <div className="mt-2 pt-2 border-t border-slate-200/70 dark:border-slate-700/70 flex items-center justify-between gap-2 text-[11px] text-slate-600 dark:text-slate-400 tabular-nums">
             {metrics.closedCount > 0 ? (
               <>
                 <span>
                   {metrics.closedCount} closed ·{' '}
                   {metrics.commercialRidersSharePct.toFixed(0)}% riders
                 </span>
-                <span className="font-mono font-medium text-slate-900">
+                <span className="font-mono font-medium text-slate-900 dark:text-slate-100">
                   {metrics.averageErPct.toFixed(1)}% ER
                 </span>
               </>
@@ -288,7 +288,7 @@ export const SavedDealsHighlights: React.FC<SavedDealsHighlightsProps> = ({
                 <span>
                   Riders {formatCurrency(metrics.totalRidersValue, currency)}
                 </span>
-                <span className="font-mono font-medium text-slate-900">
+                <span className="font-mono font-medium text-slate-900 dark:text-slate-100">
                   {metrics.averageErPct.toFixed(1)}% avg ER
                 </span>
               </>

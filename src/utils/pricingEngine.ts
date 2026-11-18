@@ -1036,3 +1036,90 @@ export function searchAndEvaluateLegalLibrary(params: {
 
   return scoredResults.map((item) => item.evaluation);
 }
+
+export interface InflationAdjustedDeal {
+  result: CalculatedDealResult;
+  multiplier: number;
+  annualInflationPct: number;
+  years: number;
+  upliftAmount: number;
+}
+
+export function applyInflationAdjustment(
+  baseResult: CalculatedDealResult,
+  annualInflationPct: number,
+  years = 1
+): InflationAdjustedDeal {
+  const safePct = Number.isFinite(annualInflationPct)
+    ? Math.max(0, Math.min(50, annualInflationPct))
+    : 0;
+  const safeYears = Number.isFinite(years)
+    ? Math.max(1, Math.min(10, Math.round(years)))
+    : 1;
+  const multiplier = Math.pow(1 + safePct / 100, safeYears);
+
+  const scale = (amount: number) => Math.round(amount * multiplier * 100) / 100;
+  const b = baseResult.breakdown;
+
+  const totalRecommendedRate = scale(b.totalRecommendedRate);
+  const upliftAmount = Math.max(0, totalRecommendedRate - b.totalRecommendedRate);
+  const estimatedSelfEmploymentTax = totalRecommendedRate * 0.153;
+  const estimatedNetAfterSETax =
+    totalRecommendedRate - estimatedSelfEmploymentTax;
+
+  const scaleTier = (
+    tier: CalculatedDealResult['tieredPackages']['tierA_Organic']
+  ) => {
+    const baseFee = tier.fee;
+    const adjustedFee = scale(baseFee);
+    const tierUplift = Math.max(0, adjustedFee - baseFee);
+    return {
+      ...tier,
+      fee: adjustedFee,
+      lineItems:
+        tierUplift > 0
+          ? [
+              ...tier.lineItems,
+              {
+                label: `Inflation Adjustment (+${safePct.toFixed(1)}% · ${safeYears}yr)`,
+                amount: tierUplift,
+              },
+            ]
+          : tier.lineItems,
+    };
+  };
+
+  return {
+    multiplier,
+    annualInflationPct: safePct,
+    years: safeYears,
+    upliftAmount,
+    result: {
+      ...baseResult,
+      breakdown: {
+        ...b,
+        activeCpm: scale(b.activeCpm),
+        rawReachValue: scale(b.rawReachValue),
+        effectiveFloorCost: scale(b.effectiveFloorCost),
+        baseCreationFee: scale(b.baseCreationFee),
+        usageRightsFee: scale(b.usageRightsFee),
+        whitelistingFee: scale(b.whitelistingFee),
+        exclusivityFee: scale(b.exclusivityFee),
+        rushFee: scale(b.rushFee),
+        excessRevisionsFee: scale(b.excessRevisionsFee),
+        totalCommercialRiders: scale(b.totalCommercialRiders),
+        totalRecommendedRate,
+        estimatedSelfEmploymentTax,
+        estimatedNetAfterSETax,
+      },
+      tieredPackages: {
+        tierA_Organic: scaleTier(baseResult.tieredPackages.tierA_Organic),
+        tierB_StandardGrowth: scaleTier(
+          baseResult.tieredPackages.tierB_StandardGrowth
+        ),
+        tierC_FullScale: scaleTier(baseResult.tieredPackages.tierC_FullScale),
+      },
+    },
+  };
+}
+
