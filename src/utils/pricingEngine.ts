@@ -11,6 +11,7 @@ import {
   CalculatedDealResult,
   CampaignRoiEstimate,
   ClauseCategory,
+  ClauseRiskWeight,
   ContractClause,
   ContractRiskAssessment,
   ContractRiskLevel,
@@ -20,6 +21,7 @@ import {
   DealScope,
   DealWarning,
   EmailScenarioId,
+  EngagementVelocityBenchmarks,
   LegalLibraryEntry,
   LegalTermAuditEvaluation,
   PerformanceProjection,
@@ -130,6 +132,132 @@ export function getFollowerTier(followers: number): CalculatedDealResult['follow
   };
 }
 
+export function getDefaultEngagementVelocity(
+  medianViews: number,
+  calculatedER: number
+): EngagementVelocityBenchmarks {
+  const safeViews = Math.max(500, Math.round(medianViews || 10000));
+  const safeER = Math.max(1.0, Number.isFinite(calculatedER) ? calculatedER : 4.0);
+  const recentLowViews = Math.max(100, Math.round((safeViews * 0.65) / 100) * 100);
+  const recentHighViews = Math.max(
+    recentLowViews + 500,
+    Math.round((safeViews * 1.65) / 100) * 100
+  );
+  const recentLowER = Math.max(0.5, Math.round(safeER * 0.6 * 10) / 10);
+  const recentHighER = Math.max(
+    recentLowER + 1.0,
+    Math.round(safeER * 1.35 * 10) / 10
+  );
+
+  return {
+    enabled: false,
+    recentLowViews,
+    recentHighViews,
+    recentLowER,
+    recentHighER,
+    sensitivity: 1.0,
+  };
+}
+
+export function calculateEngagementVelocity(params: {
+  medianViews: number;
+  calculatedER: number;
+  velocity?: EngagementVelocityBenchmarks;
+}): {
+  velocityEnabled: boolean;
+  velocityMultiplier: number;
+  velocityIndex: number;
+  velocitySensitivity: number;
+  velocityStatusLabel: string;
+  velocityViewPositionPct: number;
+  velocityErPositionPct: number;
+  viewSpreadRatio: number;
+} {
+  const { medianViews, calculatedER, velocity } = params;
+  const fallback = getDefaultEngagementVelocity(medianViews, calculatedER);
+  const cfg = velocity ?? fallback;
+
+  const rawLowViews = Math.max(0, Number.isFinite(cfg.recentLowViews) ? cfg.recentLowViews : fallback.recentLowViews);
+  const rawHighViews = Math.max(0, Number.isFinite(cfg.recentHighViews) ? cfg.recentHighViews : fallback.recentHighViews);
+  const lowViews = Math.min(rawLowViews, rawHighViews);
+  const highViews = Math.max(rawLowViews, rawHighViews);
+
+  const rawLowER = Math.max(0, Number.isFinite(cfg.recentLowER) ? cfg.recentLowER : fallback.recentLowER);
+  const rawHighER = Math.max(0, Number.isFinite(cfg.recentHighER) ? cfg.recentHighER : fallback.recentHighER);
+  const lowER = Math.min(rawLowER, rawHighER);
+  const highER = Math.max(rawLowER, rawHighER);
+
+  const sensitivity = Number.isFinite(cfg.sensitivity)
+    ? Math.min(2.0, Math.max(0.25, cfg.sensitivity))
+    : 1.0;
+
+  const viewSpan = Math.max(100, highViews - lowViews);
+  const erSpan = Math.max(0.5, highER - lowER);
+
+  const viewRatio = (medianViews - lowViews) / viewSpan;
+  const erRatio = (calculatedER - lowER) / erSpan;
+
+  const velocityViewPositionPct = Math.round(
+    Math.min(100, Math.max(0, viewRatio * 100))
+  );
+  const velocityErPositionPct = Math.round(
+    Math.min(100, Math.max(0, erRatio * 100))
+  );
+
+  // Normalized -1.25 to +1.25 around the benchmark midpoint
+  const viewNormalized = Math.min(1.25, Math.max(-1.25, (viewRatio - 0.5) * 2));
+  const erNormalized = Math.min(1.25, Math.max(-1.25, (erRatio - 0.5) * 2));
+
+  // ER velocity carries 60% weight (conversion intent), view momentum carries 40% weight
+  const rawComposite = erNormalized * 0.6 + viewNormalized * 0.4;
+  const clampedComposite = Math.min(1, Math.max(-1, rawComposite));
+  const velocityIndex = Math.round(clampedComposite * 100);
+
+  const viewSpreadRatio =
+    lowViews > 0 ? Math.round((highViews / lowViews) * 10) / 10 : highViews > 0 ? 10 : 1;
+
+  if (!cfg.enabled) {
+    return {
+      velocityEnabled: false,
+      velocityMultiplier: 1.0,
+      velocityIndex: 0,
+      velocitySensitivity: sensitivity,
+      velocityStatusLabel: 'Static Model',
+      velocityViewPositionPct,
+      velocityErPositionPct,
+      viewSpreadRatio,
+    };
+  }
+
+  // Dynamic sensitivity adjustment: at 1.0x sensitivity, +/-20% max swing;
+  // scales linearly with sensitivity (0.25x..2.0x) and clamps to safe 0.70x..1.45x bounds.
+  const rawMultiplier = 1 + clampedComposite * 0.2 * sensitivity;
+  const velocityMultiplier =
+    Math.round(Math.min(1.45, Math.max(0.7, rawMultiplier)) * 1000) / 1000;
+
+  let velocityStatusLabel = 'Steady Baseline';
+  if (velocityIndex >= 35) {
+    velocityStatusLabel = 'Accelerating Momentum';
+  } else if (velocityIndex >= 10) {
+    velocityStatusLabel = 'Positive Momentum';
+  } else if (velocityIndex <= -35) {
+    velocityStatusLabel = 'Cooling Velocity';
+  } else if (velocityIndex <= -10) {
+    velocityStatusLabel = 'Softening Trend';
+  }
+
+  return {
+    velocityEnabled: true,
+    velocityMultiplier,
+    velocityIndex,
+    velocitySensitivity: sensitivity,
+    velocityStatusLabel,
+    velocityViewPositionPct,
+    velocityErPositionPct,
+    viewSpreadRatio,
+  };
+}
+
 export function calculateDealRate(
   profile: CreatorProfile,
   scope: DealScope
@@ -161,8 +289,18 @@ export function calculateDealRate(
   const { multiplier: engagementMultiplier, label: engagementTierLabel } =
     getEngagementCoefficient(calculatedER);
 
+  const velocityCalc = calculateEngagementVelocity({
+    medianViews: safeMedianViews,
+    calculatedER,
+    velocity: profile.engagementVelocity,
+  });
+
   const rawReachValue =
-    (safeMedianViews / 1000) * activeCpm * platformMultiplier * engagementMultiplier;
+    (safeMedianViews / 1000) *
+    activeCpm *
+    platformMultiplier *
+    engagementMultiplier *
+    velocityCalc.velocityMultiplier;
 
   // Enforce minimum $100.00 equitable production baseline floor when user floor is lower
   const requestedFloor = Math.max(0, profile.productionFloorCost);
@@ -336,6 +474,14 @@ export function calculateDealRate(
       calculatedER,
       engagementTierLabel,
       engagementMultiplier,
+      velocityEnabled: velocityCalc.velocityEnabled,
+      velocityMultiplier: velocityCalc.velocityMultiplier,
+      velocityIndex: velocityCalc.velocityIndex,
+      velocitySensitivity: velocityCalc.velocitySensitivity,
+      velocityStatusLabel: velocityCalc.velocityStatusLabel,
+      velocityViewPositionPct: velocityCalc.velocityViewPositionPct,
+      velocityErPositionPct: velocityCalc.velocityErPositionPct,
+      viewSpreadRatio: velocityCalc.viewSpreadRatio,
       effectiveFloorCost,
       floorEnforced,
       baseCreationFee,
@@ -378,7 +524,11 @@ export function generateRateCardMarkdown(
     `# Sponsorship Rate Card & Scope Proposal (${currency})`,
     ``,
     `**Channel Profile:** ${platform.label} · ${niche.label}`,
-    `**Verified Reach Baseline:** ${formatNumber(profile.medianViews)} median views (last 10–15 posts) · ${result.breakdown.calculatedER.toFixed(1)}% High-Intent Engagement Rate`,
+    `**Verified Reach Baseline:** ${formatNumber(profile.medianViews)} median views (last 10–15 posts) · ${result.breakdown.calculatedER.toFixed(1)}% High-Intent Engagement Rate${
+      result.breakdown.velocityEnabled
+        ? ` · Engagement Velocity ${result.breakdown.velocityMultiplier.toFixed(2)}x (${result.breakdown.velocityStatusLabel})`
+        : ''
+    }`,
     ``,
     `## Requested Scope Quote: ${formatCurrencyExact(result.breakdown.totalRecommendedRate, currency)}`,
     `- **Base Creation Fee (${platform.deliverableUnit}):** ${formatCurrencyExact(result.breakdown.baseCreationFee, currency)}`,
@@ -417,6 +567,7 @@ export function generateNegotiationEmail(params: {
   scope: DealScope;
   result: CalculatedDealResult;
   flaggedClauses: ContractClause[];
+  customClauses?: string;
   currency?: CurrencyCode;
 }): { subject: string; body: string } {
   const {
@@ -428,6 +579,7 @@ export function generateNegotiationEmail(params: {
     scope,
     result,
     flaggedClauses,
+    customClauses = '',
     currency = 'USD',
   } = params;
   const fmt = (val: number) => formatCurrencyExact(val, currency);
@@ -437,10 +589,15 @@ export function generateNegotiationEmail(params: {
   const { tierA_Organic, tierB_StandardGrowth, tierC_FullScale } = result.tieredPackages;
   const b = result.breakdown;
 
-  const flaggedSummary =
+  const trimmedCustomClauses = customClauses.trim();
+  const flaggedPart =
     flaggedClauses.length > 0
       ? `\n\nIn reviewing the draft agreement, I also noted ${flaggedClauses.length} standard redline item${flaggedClauses.length > 1 ? 's' : ''} (${flaggedClauses.map((c) => c.clauseTitle).join(', ')}) that I'd like to align on—happy to share clean replacement wording once we confirm scope.`
       : '';
+  const customPart = trimmedCustomClauses
+    ? `\n\nAdditionally, please include the following custom stipulation(s) in the final contract draft:\n${trimmedCustomClauses}`
+    : '';
+  const flaggedSummary = `${flaggedPart}${customPart}`;
 
   switch (scenario) {
     case 'three_tier_anchor':
@@ -815,12 +972,56 @@ const ALL_CLAUSE_CATEGORIES: ClauseCategory[] = [
   'Liability & Scope',
 ];
 
+export const RISK_WEIGHT_POINTS: Record<ClauseRiskWeight, number> = {
+  critical: 9,
+  moderate: 5,
+  low: 2,
+};
+
+export const RISK_WEIGHT_RANK: Record<ClauseRiskWeight, number> = {
+  critical: 3,
+  moderate: 2,
+  low: 1,
+};
+
+export function getDefaultClauseRiskWeight(
+  clause: Pick<ContractClause, 'clauseId' | 'severity'>
+): ClauseRiskWeight {
+  const baseWeight = CLAUSE_PREDATORY_WEIGHTS[clause.clauseId];
+  if (clause.severity === 'critical' || (baseWeight !== undefined && baseWeight >= 7)) {
+    return 'critical';
+  }
+  if (baseWeight !== undefined && baseWeight <= 3) {
+    return 'low';
+  }
+  return 'moderate';
+}
+
+export function resolveClauseRiskWeight(
+  clause: Pick<ContractClause, 'clauseId' | 'severity'>,
+  customWeights?: Partial<Record<number, ClauseRiskWeight>>
+): ClauseRiskWeight {
+  return customWeights?.[clause.clauseId] ?? getDefaultClauseRiskWeight(clause);
+}
+
 export function calculateContractRiskScore(
   flaggedClauses: ContractClause[],
-  allClauses: ContractClause[] = []
+  allClauses: ContractClause[] = [],
+  customWeights?: Partial<Record<number, ClauseRiskWeight>>
 ): ContractRiskAssessment {
+  const getEffectivePoints = (c: ContractClause): number => {
+    const customWeight = customWeights?.[c.clauseId];
+    if (customWeight) {
+      return RISK_WEIGHT_POINTS[customWeight];
+    }
+    return (
+      CLAUSE_PREDATORY_WEIGHTS[c.clauseId] ??
+      (c.severity === 'critical' ? 7 : 4)
+    );
+  };
+
   const baseWeightSum = flaggedClauses.reduce(
-    (sum, c) => sum + (CLAUSE_PREDATORY_WEIGHTS[c.clauseId] ?? (c.severity === 'critical' ? 7 : 4)),
+    (sum, c) => sum + getEffectivePoints(c),
     0
   );
 
@@ -862,11 +1063,17 @@ export function calculateContractRiskScore(
   const criticalCount = flaggedClauses.filter((c) => c.severity === 'critical').length;
   const warningCount = flaggedClauses.filter((c) => c.severity === 'warning').length;
 
+  const weightCounts = { critical: 0, moderate: 0, low: 0 };
+  for (const clause of flaggedClauses) {
+    const w = resolveClauseRiskWeight(clause, customWeights);
+    weightCounts[w] += 1;
+  }
+
   const categoryBreakdown = ALL_CLAUSE_CATEGORIES.map((category) => {
     const catFlagged = flaggedClauses.filter((c) => c.category === category);
     const catTotal = allClauses.filter((c) => c.category === category).length;
     const weightPoints = catFlagged.reduce(
-      (sum, c) => sum + (CLAUSE_PREDATORY_WEIGHTS[c.clauseId] ?? 5),
+      (sum, c) => sum + getEffectivePoints(c),
       0
     );
     return {
@@ -878,15 +1085,23 @@ export function calculateContractRiskScore(
   });
 
   const topDrivers = [...flaggedClauses]
-    .map((c) => ({
-      clauseId: c.clauseId,
-      clauseTitle: c.clauseTitle,
-      category: c.category,
-      severity: c.severity,
-      weightPoints:
-        CLAUSE_PREDATORY_WEIGHTS[c.clauseId] ?? (c.severity === 'critical' ? 7 : 4),
-    }))
-    .sort((a, b) => b.weightPoints - a.weightPoints || a.clauseId - b.clauseId)
+    .map((c) => {
+      const riskWeight = resolveClauseRiskWeight(c, customWeights);
+      return {
+        clauseId: c.clauseId,
+        clauseTitle: c.clauseTitle,
+        category: c.category,
+        severity: c.severity,
+        riskWeight,
+        weightPoints: getEffectivePoints(c),
+      };
+    })
+    .sort(
+      (a, b) =>
+        RISK_WEIGHT_RANK[b.riskWeight] - RISK_WEIGHT_RANK[a.riskWeight] ||
+        b.weightPoints - a.weightPoints ||
+        a.clauseId - b.clauseId
+    )
     .slice(0, 4);
 
   return {
@@ -897,6 +1112,7 @@ export function calculateContractRiskScore(
     criticalCount,
     warningCount,
     flaggedCount: flaggedClauses.length,
+    weightCounts,
     categoryBreakdown,
     topDrivers,
   };
@@ -1122,4 +1338,177 @@ export function applyInflationAdjustment(
     },
   };
 }
+
+function stripMarkdownSyntax(raw: string): string {
+  return raw
+    .replace(/\r\n/g, '\n')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^[-*_]{3,}\s*$/gm, '')
+    .trim();
+}
+
+export function generatePlainTextContract(params: {
+  brandName?: string;
+  creatorName?: string;
+  profile: CreatorProfile;
+  scope: DealScope;
+  result: CalculatedDealResult;
+  flaggedClauses: ContractClause[];
+  clauseRiskWeights?: Partial<Record<number, ClauseRiskWeight>>;
+  customClauses?: string;
+  currency?: CurrencyCode;
+}): string {
+  const {
+    brandName = '',
+    creatorName = '',
+    profile,
+    scope,
+    result,
+    flaggedClauses,
+    clauseRiskWeights,
+    customClauses = '',
+    currency = 'USD',
+  } = params;
+
+  const fmt = (val: number) => formatCurrencyExact(val, currency);
+  const platform = PLATFORM_SPECS[profile.platform];
+  const niche = NICHE_BENCHMARKS[profile.niche];
+  const usage = USAGE_RIGHTS_SPECS[scope.usageRightsTerm];
+  const exclusivity = EXCLUSIVITY_SPECS[scope.exclusivityType];
+  const b = result.breakdown;
+
+  const resolvedBrand = brandName.trim() || '[Brand Legal Name]';
+  const resolvedCreator = creatorName.trim() || '[Creator Legal Name]';
+  const effectiveDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+  const turnaroundLabel =
+    scope.turnaroundWindow === 'rush_under_5d'
+      ? 'Expedited Rush Turnaround (Under 5 Business Days)'
+      : 'Standard Production Schedule (14 Calendar Days from Brief Approval)';
+
+  const sortedFlagged = [...flaggedClauses].sort((a, z) => {
+    const rankA = RISK_WEIGHT_RANK[resolveClauseRiskWeight(a, clauseRiskWeights)];
+    const rankZ = RISK_WEIGHT_RANK[resolveClauseRiskWeight(z, clauseRiskWeights)];
+    return rankZ - rankA || a.clauseId - z.clauseId;
+  });
+
+  const customBlocks = stripMarkdownSyntax(customClauses)
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  const lines: string[] = [
+    'CREATOR SPONSORSHIP AGREEMENT & CONTRACT MODIFICATION SCHEDULE',
+    '========================================================================',
+    `Effective Date: ${effectiveDate}`,
+    `Brand / Client ("Brand"): ${resolvedBrand}`,
+    `Creator ("Creator"): ${resolvedCreator}`,
+    `Settlement Currency: ${currency}`,
+    '',
+    '1. DELIVERABLES & PRODUCTION SCHEDULE',
+    `   1.1 Primary Deliverable: ${platform.deliverableUnit} (${platform.label} - ${niche.label})`,
+    `   1.2 Turnaround Window: ${turnaroundLabel}`,
+    `   1.3 Revision Allowance: Includes up to ${scope.includedRevisionRounds} consolidated round(s) of non-substantive edits consistent with the approved creative brief. Additional revision rounds or out-of-scope reshoots shall be billed at ${fmt(scope.excessRevisionFeePerRound)} per round.`,
+    '',
+    '2. COMPENSATION & ITEMIZED FEE SCHEDULE',
+    `   2.1 Base Creation Fee: ${fmt(b.baseCreationFee)}`,
+    `   2.2 Paid Digital Ad Usage Rights (${usage.label}): ${fmt(b.usageRightsFee)}`,
+    scope.whitelistingEnabled
+      ? `   2.3 Handle Whitelisting / Paid Boosting (${scope.whitelistingExpirationDays}-day cap): ${fmt(b.whitelistingFee)}`
+      : `   2.3 Handle Whitelisting / Paid Boosting: Not included (${fmt(0)})`,
+    `   2.4 Category Exclusivity (${exclusivity.label}): ${fmt(b.exclusivityFee)}`,
+  ];
+
+  let nextCompItem = 5;
+  if (b.rushFee > 0) {
+    lines.push(
+      `   2.${nextCompItem} Expedited Rush Turnaround Surcharge (+25%): ${fmt(b.rushFee)}`
+    );
+    nextCompItem += 1;
+  }
+  if (b.excessRevisionsFee > 0) {
+    lines.push(
+      `   2.${nextCompItem} Pre-Approved Additional Revision Rounds (+${b.excessRevisionCount}): ${fmt(b.excessRevisionsFee)}`
+    );
+    nextCompItem += 1;
+  }
+  lines.push(
+    `   2.${nextCompItem} TOTAL AGREED COMPENSATION: ${fmt(b.totalRecommendedRate)}`,
+    '',
+    '3. COMMERCIAL RIGHTS, WHITELISTING & EXCLUSIVITY',
+    `   3.1 Usage Rights Grant: ${usage.label}. ${usage.description}`,
+    scope.whitelistingEnabled
+      ? `   3.2 Whitelisting Authorization: Creator authorizes Paid Partnership / Spark Ad handle whitelisting strictly for ${scope.whitelistingExpirationDays} calendar days from initial ad launch, after which access expires automatically.`
+      : '   3.2 Whitelisting Authorization: No handle whitelisting, Spark Ad codes, or paid boosting permissions are granted under this Agreement.',
+    `   3.3 Exclusivity Scope: ${exclusivity.label}. ${exclusivity.description}`,
+    '',
+    '4. SELECTED CONTRACT MODIFICATIONS & REPLACEMENT CLAUSES'
+  );
+
+  if (sortedFlagged.length === 0) {
+    lines.push(
+      '   4.1 Standard Baseline Terms: No additional clause redline modifications were selected. Standard Net-14 payment upon submission, mutual indemnification capped at fees paid, and FTC Endorsement Guide compliance apply.'
+    );
+  } else {
+    sortedFlagged.forEach((clause, idx) => {
+      const weight = resolveClauseRiskWeight(clause, clauseRiskWeights);
+      const weightLabel =
+        weight === 'critical'
+          ? 'Critical Impact'
+          : weight === 'moderate'
+            ? 'Moderate Impact'
+            : 'Low Impact';
+      lines.push(
+        `   4.${idx + 1} ${clause.clauseTitle} (${clause.category} - ${weightLabel})`,
+        `       ${stripMarkdownSyntax(clause.replacementText)}`,
+        ''
+      );
+    });
+    if (lines[lines.length - 1] === '') {
+      lines.pop();
+    }
+  }
+
+  let nextSectionNum = 5;
+  if (customBlocks.length > 0) {
+    lines.push('', `${nextSectionNum}. CUSTOM STIPULATIONS & ADDITIONAL LEGAL TERMS`);
+    customBlocks.forEach((block, idx) => {
+      const indented = block
+        .split('\n')
+        .map((line, lineIdx) => (lineIdx === 0 ? `   ${nextSectionNum}.${idx + 1} ${line}` : `       ${line}`))
+        .join('\n');
+      lines.push(indented, '');
+    });
+    if (lines[lines.length - 1] === '') {
+      lines.pop();
+    }
+    nextSectionNum += 1;
+  }
+
+  lines.push(
+    '',
+    `${nextSectionNum}. EXECUTION & SIGNATURES`,
+    '   IN WITNESS WHEREOF, the parties hereto have executed this Agreement as of the Effective Date set forth above.',
+    '',
+    `   BRAND / CLIENT: ${resolvedBrand}`,
+    '   Authorized Signature: ___________________________   Date: _______________',
+    '   Printed Name & Title: ___________________________',
+    '',
+    `   CREATOR: ${resolvedCreator}`,
+    '   Authorized Signature: ___________________________   Date: _______________',
+    '   Printed Name:         ___________________________',
+    '',
+    'NOTICE: This plain-text contract draft is generated for commercial negotiation and documentation convenience and does not constitute formal legal representation.'
+  );
+
+  return lines.join('\n');
+}
+
 

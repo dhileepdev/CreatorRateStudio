@@ -101,6 +101,49 @@ export function decodeShareConfig(
       CreatorProfile['engagementMetrics']
     >;
 
+    const rawVelocity = rawProfile.engagementVelocity as
+      | Partial<NonNullable<CreatorProfile['engagementVelocity']>>
+      | undefined;
+    const fallbackVelocity = fallbackProfile.engagementVelocity;
+
+    const sanitizedVelocity = rawVelocity
+      ? {
+          enabled: Boolean(rawVelocity.enabled),
+          recentLowViews: toNonNegativeNumber(
+            rawVelocity.recentLowViews,
+            fallbackVelocity?.recentLowViews ?? 10000
+          ),
+          recentHighViews: toNonNegativeNumber(
+            rawVelocity.recentHighViews,
+            fallbackVelocity?.recentHighViews ?? 30000
+          ),
+          recentLowER: Math.min(
+            100,
+            toNonNegativeNumber(
+              rawVelocity.recentLowER,
+              fallbackVelocity?.recentLowER ?? 3.0
+            )
+          ),
+          recentHighER: Math.min(
+            100,
+            toNonNegativeNumber(
+              rawVelocity.recentHighER,
+              fallbackVelocity?.recentHighER ?? 9.0
+            )
+          ),
+          sensitivity: Math.min(
+            2.0,
+            Math.max(
+              0.25,
+              toNonNegativeNumber(
+                rawVelocity.sensitivity,
+                fallbackVelocity?.sensitivity ?? 1.0
+              )
+            )
+          ),
+        }
+      : fallbackVelocity;
+
     const sanitizedProfile: CreatorProfile = {
       platform,
       youtubeMultiplier: Math.min(
@@ -142,6 +185,7 @@ export function decodeShareConfig(
           fallbackProfile.engagementMetrics.saves
         ),
       },
+      engagementVelocity: sanitizedVelocity,
       productionFloorCost: toNonNegativeNumber(
         rawProfile.productionFloorCost,
         fallbackProfile.productionFloorCost

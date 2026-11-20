@@ -31,6 +31,15 @@ export type ExclusivityType =
 
 export type TurnaroundWindow = 'standard_14d' | 'rush_under_5d';
 
+export interface EngagementVelocityBenchmarks {
+  enabled: boolean;
+  recentLowViews: number;
+  recentHighViews: number;
+  recentLowER: number;
+  recentHighER: number;
+  sensitivity: number; // 0.25 to 2.0 elasticity multiplier
+}
+
 export interface CreatorProfile {
   platform: PlatformId;
   youtubeMultiplier: number; // 4.0 to 6.0 when youtube_longform is active
@@ -43,6 +52,7 @@ export interface CreatorProfile {
     shares: number;
     saves: number;
   };
+  engagementVelocity?: EngagementVelocityBenchmarks;
   productionFloorCost: number;
 }
 
@@ -85,6 +95,14 @@ export interface CalculatedDealResult {
     calculatedER: number;
     engagementTierLabel: string;
     engagementMultiplier: number;
+    velocityEnabled: boolean;
+    velocityMultiplier: number;
+    velocityIndex: number; // -100 to +100 composite position score
+    velocitySensitivity: number;
+    velocityStatusLabel: string;
+    velocityViewPositionPct: number; // 0 to 100 position within low..high views
+    velocityErPositionPct: number; // 0 to 100 position within low..high ER
+    viewSpreadRatio: number; // highViews / lowViews
     effectiveFloorCost: number;
     floorEnforced: boolean;
     baseCreationFee: number;
@@ -129,6 +147,8 @@ export interface ContractClause {
 
 export type ContractRiskLevel = 'low' | 'moderate' | 'high' | 'critical';
 
+export type ClauseRiskWeight = 'critical' | 'moderate' | 'low';
+
 export interface ContractRiskAssessment {
   score: number; // 1 to 100
   level: ContractRiskLevel;
@@ -137,6 +157,11 @@ export interface ContractRiskAssessment {
   criticalCount: number;
   warningCount: number;
   flaggedCount: number;
+  weightCounts: {
+    critical: number;
+    moderate: number;
+    low: number;
+  };
   categoryBreakdown: Array<{
     category: ClauseCategory;
     flaggedCount: number;
@@ -148,6 +173,7 @@ export interface ContractRiskAssessment {
     clauseTitle: string;
     category: ClauseCategory;
     severity: 'warning' | 'critical';
+    riskWeight: ClauseRiskWeight;
     weightPoints: number;
   }>;
 }

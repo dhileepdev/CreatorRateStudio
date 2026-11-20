@@ -1,18 +1,25 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
+  ArrowDownWideNarrow,
   CheckSquare,
   Copy,
+  FilePenLine,
+  FileText,
   Mail,
+  Plus,
+  RotateCcw,
   Scale,
   ShieldAlert,
   ShieldCheck,
   Square,
+  Trash2,
 } from 'lucide-react';
 import { CONTRACT_RED_FLAGS } from '../data/benchmarks';
 import {
   CalculatedDealResult,
   ClauseCategory,
+  ClauseRiskWeight,
   ContractRiskLevel,
   CreatorProfile,
   DealScope,
@@ -24,9 +31,15 @@ import {
   calculateContractRiskScore,
   formatCurrencyExact,
   generateNegotiationEmail,
+  getDefaultClauseRiskWeight,
+  resolveClauseRiskWeight,
+  RISK_WEIGHT_POINTS,
+  RISK_WEIGHT_RANK,
 } from '../utils/pricingEngine';
+import { ContractExportModal } from './ContractExportModal';
 import { ContractNegotiationStrategyModal } from './ContractNegotiationStrategyModal';
 import { LegalLibraryPanel } from './LegalLibraryPanel';
+import { NegotiationSessionTimer } from './NegotiationSessionTimer';
 
 interface ContractAuditSectionProps {
   profile: CreatorProfile;
@@ -46,6 +59,69 @@ const SCENARIOS: Array<{ id: EmailScenarioId; label: string }> = [
   { id: 'kill_fee_payment', label: 'Kill Fee & Net-14' },
 ];
 
+const RISK_WEIGHT_OPTIONS: Array<{
+  id: ClauseRiskWeight;
+  label: string;
+  priorityHint: string;
+  activeClass: string;
+  textClass: string;
+}> = [
+  {
+    id: 'critical',
+    label: 'Critical',
+    priorityHint: 'Priority 1 · Walk-away blocker',
+    activeClass: 'bg-red-700 dark:bg-red-600 text-white border-red-700 dark:border-red-600',
+    textClass: 'text-red-700 dark:text-red-400',
+  },
+  {
+    id: 'moderate',
+    label: 'Moderate',
+    priorityHint: 'Priority 2 · Counter-redline target',
+    activeClass: 'bg-amber-600 dark:bg-amber-500 text-white border-amber-600 dark:border-amber-500',
+    textClass: 'text-amber-700 dark:text-amber-400',
+  },
+  {
+    id: 'low',
+    label: 'Low',
+    priorityHint: 'Priority 3 · Optional polish',
+    activeClass: 'bg-slate-700 dark:bg-slate-600 text-white border-slate-700 dark:border-slate-600',
+    textClass: 'text-slate-600 dark:text-slate-400',
+  },
+];
+
+const CUSTOM_CLAUSES_STORAGE_KEY = 'creator_rate_studio_custom_clauses_v1';
+
+const CUSTOM_CLAUSE_SNIPPETS: Array<{ id: string; label: string; text: string }> = [
+  {
+    id: 'no_ai_training',
+    label: 'No AI Training / Likeness Cloning',
+    text: 'AI & Synthetic Media Restriction: Brand shall not use Creator’s deliverables, voice, image, or likeness to train artificial intelligence or machine learning models, nor generate synthetic replicas or AI derivatives without Creator’s separate written consent and buyout fee.',
+  },
+  {
+    id: 'late_fee',
+    label: 'Late Payment Interest (1.5%/mo)',
+    text: 'Late Payment Fee: Any invoice remaining unpaid past its due date shall accrue a late fee of 1.5% per month (or the maximum rate permitted by law), and all commercial usage licenses are automatically suspended until full payment is received.',
+  },
+  {
+    id: 'raw_footage',
+    label: 'Raw Footage Excluded',
+    text: 'Raw Footage Exclusion: This Agreement covers finished, edited Deliverables only. Unedited raw footage, project files, and unused takes remain Creator’s sole property unless licensed under a separate written addendum.',
+  },
+  {
+    id: 'creative_control',
+    label: 'Authentic Voice & Editorial Control',
+    text: 'Editorial Authenticity: Creator retains final editorial discretion over delivery tone and phrasing so Deliverables remain authentic to Creator’s audience, subject to factual accuracy regarding Brand’s verified product claims.',
+  },
+];
+
+function loadSavedCustomClauses(): string {
+  try {
+    return localStorage.getItem(CUSTOM_CLAUSES_STORAGE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
 export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
   profile,
   scope,
@@ -58,16 +134,72 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
   const { currency } = useCurrency();
   const { isDark } = useTheme();
   const [categoryFilter, setCategoryFilter] = useState<'All' | ClauseCategory>('All');
+  const [weightFilter, setWeightFilter] = useState<'All' | ClauseRiskWeight>('All');
+  const [prioritizeByWeight, setPrioritizeByWeight] = useState<boolean>(true);
+  const [clauseRiskWeights, setClauseRiskWeights] = useState<
+    Partial<Record<number, ClauseRiskWeight>>
+  >({});
   const [activeClauseId, setActiveClauseId] = useState<number>(1);
   const [scenario, setScenario] = useState<EmailScenarioId>('three_tier_anchor');
   const [brandName, setBrandName] = useState('');
   const [creatorName, setCreatorName] = useState('');
   const [offeredBudget, setOfferedBudget] = useState<number>(0);
   const [strategyModalOpen, setStrategyModalOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [customClauses, setCustomClauses] = useState<string>(loadSavedCustomClauses);
+  const [includeCustomInDraft, setIncludeCustomInDraft] = useState<boolean>(true);
   const scannerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CUSTOM_CLAUSES_STORAGE_KEY, customClauses);
+    } catch {
+      // Ignore storage quota errors in restricted browser contexts
+    }
+  }, [customClauses]);
+
+  const trimmedCustomClauses = customClauses.trim();
+  const hasCustomClauses = trimmedCustomClauses.length > 0;
+  const activeCustomClausesForDraft = includeCustomInDraft ? trimmedCustomClauses : '';
+  const customStipulationCount = hasCustomClauses
+    ? trimmedCustomClauses
+        .split(/\n\s*\n/)
+        .map((block) => block.trim())
+        .filter(Boolean).length
+    : 0;
+
+  const handleAppendCustomSnippet = (snippetText: string, label: string) => {
+    setCustomClauses((prev) => {
+      const cleaned = prev.trim();
+      if (cleaned.includes(snippetText)) {
+        return prev;
+      }
+      return cleaned ? `${cleaned}\n\n${snippetText}` : snippetText;
+    });
+    setIncludeCustomInDraft(true);
+    onNotify(`Added "${label}" to Custom Clauses.`);
+  };
+
+  const handleSetClauseRiskWeight = (clauseId: number, weight: ClauseRiskWeight) => {
+    setClauseRiskWeights((prev) => ({ ...prev, [clauseId]: weight }));
+    if (!flaggedClauseIds.includes(clauseId)) {
+      onToggleClause(clauseId);
+    }
+  };
+
+  const handleResetClauseRiskWeight = (clauseId: number) => {
+    setClauseRiskWeights((prev) => {
+      const next = { ...prev };
+      delete next[clauseId];
+      return next;
+    });
+  };
+
+  const hasCustomWeights = Object.keys(clauseRiskWeights).length > 0;
 
   const handleInspectClauseFromLibrary = (clauseId: number) => {
     setCategoryFilter('All');
+    setWeightFilter('All');
     setActiveClauseId(clauseId);
     scannerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   };
@@ -88,23 +220,72 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
     'Liability & Scope',
   ];
 
+  const flaggedClauses = useMemo(() => {
+    return CONTRACT_RED_FLAGS.filter((c) => flaggedClauseIds.includes(c.clauseId)).sort(
+      (a, b) => {
+        const rankA = RISK_WEIGHT_RANK[resolveClauseRiskWeight(a, clauseRiskWeights)];
+        const rankB = RISK_WEIGHT_RANK[resolveClauseRiskWeight(b, clauseRiskWeights)];
+        return rankB - rankA || a.clauseId - b.clauseId;
+      }
+    );
+  }, [flaggedClauseIds, clauseRiskWeights]);
+
   const filteredClauses = useMemo(() => {
-    if (categoryFilter === 'All') return CONTRACT_RED_FLAGS;
-    return CONTRACT_RED_FLAGS.filter((c) => c.category === categoryFilter);
-  }, [categoryFilter]);
+    const byCategory =
+      categoryFilter === 'All'
+        ? CONTRACT_RED_FLAGS
+        : CONTRACT_RED_FLAGS.filter((c) => c.category === categoryFilter);
+
+    const byWeight =
+      weightFilter === 'All'
+        ? byCategory
+        : byCategory.filter(
+            (c) =>
+              flaggedClauseIds.includes(c.clauseId) &&
+              resolveClauseRiskWeight(c, clauseRiskWeights) === weightFilter
+          );
+
+    if (!prioritizeByWeight) {
+      return byWeight;
+    }
+
+    return [...byWeight].sort((a, b) => {
+      const aFlagged = flaggedClauseIds.includes(a.clauseId);
+      const bFlagged = flaggedClauseIds.includes(b.clauseId);
+      if (aFlagged !== bFlagged) return aFlagged ? -1 : 1;
+      if (aFlagged && bFlagged) {
+        const rankA = RISK_WEIGHT_RANK[resolveClauseRiskWeight(a, clauseRiskWeights)];
+        const rankB = RISK_WEIGHT_RANK[resolveClauseRiskWeight(b, clauseRiskWeights)];
+        if (rankA !== rankB) return rankB - rankA;
+      }
+      return a.clauseId - b.clauseId;
+    });
+  }, [
+    categoryFilter,
+    weightFilter,
+    prioritizeByWeight,
+    flaggedClauseIds,
+    clauseRiskWeights,
+  ]);
 
   const activeClause =
     CONTRACT_RED_FLAGS.find((c) => c.clauseId === activeClauseId) ??
     CONTRACT_RED_FLAGS[0];
-
-  const flaggedClauses = useMemo(
-    () => CONTRACT_RED_FLAGS.filter((c) => flaggedClauseIds.includes(c.clauseId)),
-    [flaggedClauseIds]
-  );
+  const isActiveClauseFlagged = flaggedClauseIds.includes(activeClause.clauseId);
+  const activeClauseWeight = resolveClauseRiskWeight(activeClause, clauseRiskWeights);
+  const activeClauseDefaultWeight = getDefaultClauseRiskWeight(activeClause);
+  const isActiveClauseWeightCustom =
+    clauseRiskWeights[activeClause.clauseId] !== undefined &&
+    clauseRiskWeights[activeClause.clauseId] !== activeClauseDefaultWeight;
 
   const riskAssessment = useMemo(
-    () => calculateContractRiskScore(flaggedClauses, CONTRACT_RED_FLAGS),
-    [flaggedClauses]
+    () =>
+      calculateContractRiskScore(
+        flaggedClauses,
+        CONTRACT_RED_FLAGS,
+        clauseRiskWeights
+      ),
+    [flaggedClauses, clauseRiskWeights]
   );
 
   const generatedEmail = useMemo(
@@ -118,9 +299,21 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
         scope,
         result,
         flaggedClauses,
+        customClauses: activeCustomClausesForDraft,
         currency,
       }),
-    [scenario, brandName, creatorName, offeredBudget, profile, scope, result, flaggedClauses, currency]
+    [
+      scenario,
+      brandName,
+      creatorName,
+      offeredBudget,
+      profile,
+      scope,
+      result,
+      flaggedClauses,
+      activeCustomClausesForDraft,
+      currency,
+    ]
   );
 
   const copyText = async (text: string, label: string) => {
@@ -133,14 +326,34 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
   };
 
   const handleCopyAllRedlines = () => {
-    if (flaggedClauses.length === 0) return;
-    const bundle = flaggedClauses
-      .map(
-        (c) =>
-          `### ${c.clauseId}. ${c.clauseTitle} (${c.category})\nIssue: ${c.advice}\n\nProposed Replacement Language:\n"${c.replacementText}"`
-      )
-      .join('\n\n---\n\n');
-    copyText(bundle, `${flaggedClauses.length} flagged contract redlines`);
+    if (flaggedClauses.length === 0 && !activeCustomClausesForDraft) return;
+    const sections: string[] = [];
+
+    if (flaggedClauses.length > 0) {
+      const redlineBundle = flaggedClauses
+        .map((c) => {
+          const weight = resolveClauseRiskWeight(c, clauseRiskWeights).toUpperCase();
+          return `### [${weight} IMPACT] ${c.clauseId}. ${c.clauseTitle} (${c.category})\nIssue: ${c.advice}\n\nProposed Replacement Language:\n"${c.replacementText}"`;
+        })
+        .join('\n\n---\n\n');
+      sections.push(redlineBundle);
+    }
+
+    if (activeCustomClausesForDraft) {
+      sections.push(
+        `### [CUSTOM STIPULATIONS] Creator Additional Legal Terms\n\n${activeCustomClausesForDraft}`
+      );
+    }
+
+    const labelParts: string[] = [];
+    if (flaggedClauses.length > 0) {
+      labelParts.push(`${flaggedClauses.length} prioritized redline(s)`);
+    }
+    if (activeCustomClausesForDraft) {
+      labelParts.push('custom clauses');
+    }
+
+    copyText(sections.join('\n\n---\n\n'), labelParts.join(' + '));
   };
 
   return (
@@ -167,26 +380,41 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
             <Scale className="w-3.5 h-3.5" aria-hidden="true" />
             Negotiation Strategy
           </button>
-          {flaggedClauseIds.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setExportModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 font-semibold text-white bg-slate-900 dark:bg-slate-100 dark:text-slate-900 rounded-lg hover:bg-slate-800 dark:hover:bg-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
+          >
+            <FileText className="w-3.5 h-3.5" aria-hidden="true" />
+            Export Contract
+          </button>
+          {(flaggedClauseIds.length > 0 || activeCustomClausesForDraft.length > 0) && (
             <>
               <button
                 type="button"
                 onClick={handleCopyAllRedlines}
                 className="px-3 py-2 font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
               >
-                Copy Flagged Redlines
+                {activeCustomClausesForDraft
+                  ? 'Copy Contract Draft + Custom'
+                  : 'Copy Flagged Redlines'}
               </button>
-              <button
-                type="button"
-                onClick={onClearFlags}
-                className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 underline cursor-pointer whitespace-nowrap shrink-0"
-              >
-                Clear
-              </button>
+              {flaggedClauseIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={onClearFlags}
+                  className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 underline cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  Clear
+                </button>
+              )}
             </>
           )}
         </div>
       </div>
+
+      {/* Active Negotiation Session Timer */}
+      <NegotiationSessionTimer onNotify={onNotify} />
 
       {/* Predatory Contract Risk Score Card with Circular Progress Ring */}
       {(() => {
@@ -293,7 +521,7 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
                     ·
                   </span>
                   <span className="font-mono text-slate-700 dark:text-slate-300 tabular-nums">
-                    {riskAssessment.criticalCount} critical, {riskAssessment.warningCount} warning
+                    {riskAssessment.weightCounts.critical} critical · {riskAssessment.weightCounts.moderate} moderate · {riskAssessment.weightCounts.low} low
                   </span>
                 </div>
                 <h3 className="font-display text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100">
@@ -364,9 +592,11 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
                     >
                       <span
                         className={`font-mono font-semibold ${
-                          driver.severity === 'critical'
+                          driver.riskWeight === 'critical'
                             ? 'text-red-700 dark:text-red-400'
-                            : 'text-amber-700 dark:text-amber-400'
+                            : driver.riskWeight === 'moderate'
+                              ? 'text-amber-700 dark:text-amber-400'
+                              : 'text-slate-600 dark:text-slate-400'
                         }`}
                       >
                         +{driver.weightPoints}
@@ -391,78 +621,222 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
           className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden"
         >
           {/* Category Filter Bar */}
-          <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/70 flex flex-wrap items-center gap-1.5">
-            {categories.map((cat) => (
+          <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/70 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setCategoryFilter(cat)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                    categoryFilter === cat
+                      ? 'bg-slate-900 dark:bg-blue-600 text-white'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-700/70'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              aria-pressed={prioritizeByWeight}
+              onClick={() => setPrioritizeByWeight((prev) => !prev)}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium rounded-md border transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                prioritizeByWeight
+                  ? 'border-blue-600 dark:border-blue-500 bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300'
+                  : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <ArrowDownWideNarrow className="w-3.5 h-3.5" aria-hidden="true" />
+              {prioritizeByWeight ? 'Sorted by Impact' : 'Sort by Impact'}
+            </button>
+          </div>
+
+          {/* Risk Weight Priority Filter Bar */}
+          <div className="px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+              <span className="font-semibold text-slate-600 dark:text-slate-400 mr-1">
+                Risk Weight Filter:
+              </span>
+              {(
+                [
+                  { id: 'All', label: `All (${CONTRACT_RED_FLAGS.length})` },
+                  {
+                    id: 'critical',
+                    label: `Critical (${riskAssessment.weightCounts.critical})`,
+                  },
+                  {
+                    id: 'moderate',
+                    label: `Moderate (${riskAssessment.weightCounts.moderate})`,
+                  },
+                  { id: 'low', label: `Low (${riskAssessment.weightCounts.low})` },
+                ] as const
+              ).map((tab) => {
+                const active = weightFilter === tab.id;
+                return (
+                  <button
+                    key={`wf-${tab.id}`}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setWeightFilter(tab.id)}
+                    className={`px-2 py-1 font-mono font-medium rounded border transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                      active
+                        ? tab.id === 'critical'
+                          ? 'bg-red-700 dark:bg-red-600 text-white border-red-700 dark:border-red-600'
+                          : tab.id === 'moderate'
+                            ? 'bg-amber-600 dark:bg-amber-500 text-white border-amber-600 dark:border-amber-500'
+                            : tab.id === 'low'
+                              ? 'bg-slate-700 dark:bg-slate-600 text-white border-slate-700 dark:border-slate-600'
+                              : 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 border-slate-900 dark:border-slate-100'
+                        : 'bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {hasCustomWeights && (
               <button
-                key={cat}
                 type="button"
-                onClick={() => setCategoryFilter(cat)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap ${
-                  categoryFilter === cat
-                    ? 'bg-slate-900 dark:bg-blue-600 text-white'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-700/70'
-                }`}
+                onClick={() => setClauseRiskWeights({})}
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-700 dark:text-blue-400 hover:underline cursor-pointer whitespace-nowrap shrink-0"
               >
-                {cat}
+                <RotateCcw className="w-3 h-3" aria-hidden="true" />
+                Reset Weights
               </button>
-            ))}
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-800">
             {/* Clause List */}
-            <div className="md:col-span-6 divide-y divide-slate-100 dark:divide-slate-800 max-h-[520px] overflow-y-auto">
-              {filteredClauses.map((clause) => {
-                const isFlagged = flaggedClauseIds.includes(clause.clauseId);
-                const isSelected = activeClause.clauseId === clause.clauseId;
-                return (
-                  <div
-                    key={clause.clauseId}
-                    className={`p-3.5 flex items-start gap-3 transition-colors ${
-                      isSelected
-                        ? 'bg-blue-50/60 dark:bg-blue-950/40'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                    }`}
+            <div className="md:col-span-6 divide-y divide-slate-100 dark:divide-slate-800 max-h-[540px] overflow-y-auto">
+              {filteredClauses.length === 0 ? (
+                <div className="p-6 text-center space-y-2">
+                  <p className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                    No flagged clauses match the &ldquo;{weightFilter}&rdquo; Risk Weight filter.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setWeightFilter('All');
+                      setCategoryFilter('All');
+                    }}
+                    className="px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer whitespace-nowrap"
                   >
-                    <button
-                      type="button"
-                      onClick={() => onToggleClause(clause.clauseId)}
-                      aria-label={`Flag ${clause.clauseTitle}`}
-                      className="mt-0.5 text-slate-600 dark:text-slate-400 hover:text-blue-700 dark:hover:text-blue-400 cursor-pointer shrink-0"
-                    >
-                      {isFlagged ? (
-                        <CheckSquare className="w-4 h-4 text-blue-700 dark:text-blue-400" />
-                      ) : (
-                        <Square className="w-4 h-4" />
-                      )}
-                    </button>
+                    Show All Clauses
+                  </button>
+                </div>
+              ) : (
+                filteredClauses.map((clause) => {
+                  const isFlagged = flaggedClauseIds.includes(clause.clauseId);
+                  const isSelected = activeClause.clauseId === clause.clauseId;
+                  const currentWeight = resolveClauseRiskWeight(
+                    clause,
+                    clauseRiskWeights
+                  );
+                  const weightOption = RISK_WEIGHT_OPTIONS.find(
+                    (o) => o.id === currentWeight
+                  )!;
 
-                    <button
-                      type="button"
-                      onClick={() => setActiveClauseId(clause.clauseId)}
-                      className="flex-1 text-left cursor-pointer min-w-0"
+                  return (
+                    <div
+                      key={clause.clauseId}
+                      className={`p-3.5 space-y-2 transition-colors ${
+                        isSelected
+                          ? 'bg-blue-50/60 dark:bg-blue-950/40'
+                          : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                      }`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
-                          {clause.clauseId}. {clause.clauseTitle}
-                        </span>
-                        <span
-                          className={`text-[11px] font-medium shrink-0 ${
-                            clause.severity === 'critical'
-                              ? 'text-red-700 dark:text-red-400'
-                              : 'text-amber-700 dark:text-amber-400'
-                          }`}
+                      <div className="flex items-start gap-3">
+                        <button
+                          type="button"
+                          onClick={() => onToggleClause(clause.clauseId)}
+                          aria-label={`Flag ${clause.clauseTitle}`}
+                          className="mt-0.5 text-slate-600 dark:text-slate-400 hover:text-blue-700 dark:hover:text-blue-400 cursor-pointer shrink-0"
                         >
-                          {clause.severity === 'critical' ? 'Critical' : 'Warning'}
-                        </span>
+                          {isFlagged ? (
+                            <CheckSquare className="w-4 h-4 text-blue-700 dark:text-blue-400" />
+                          ) : (
+                            <Square className="w-4 h-4" />
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveClauseId(clause.clauseId)}
+                          className="flex-1 text-left cursor-pointer min-w-0"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
+                              {clause.clauseId}. {clause.clauseTitle}
+                            </span>
+                            <span
+                              className={`text-[11px] font-medium shrink-0 ${
+                                isFlagged
+                                  ? weightOption.textClass
+                                  : clause.severity === 'critical'
+                                    ? 'text-red-700 dark:text-red-400'
+                                    : 'text-amber-700 dark:text-amber-400'
+                              }`}
+                            >
+                              {isFlagged
+                                ? `${weightOption.label} Impact`
+                                : clause.severity === 'critical'
+                                  ? 'Critical'
+                                  : 'Warning'}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            {clause.category}
+                            {isFlagged
+                              ? ` · Flagged · +${RISK_WEIGHT_POINTS[currentWeight]} pts`
+                              : ''}
+                          </div>
+                        </button>
                       </div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        {clause.category}
-                        {isFlagged ? ' · Flagged in draft' : ''}
-                      </div>
-                    </button>
-                  </div>
-                );
-              })}
+
+                      {/* Inline Risk Weight Toggle for Flagged Clauses */}
+                      {isFlagged && (
+                        <div className="pl-7 flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                            Risk Weight
+                          </span>
+                          <div
+                            role="group"
+                            aria-label={`Risk weight for ${clause.clauseTitle}`}
+                            className="inline-flex rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 p-0.5"
+                          >
+                            {RISK_WEIGHT_OPTIONS.map((opt) => {
+                              const isWeightActive = currentWeight === opt.id;
+                              return (
+                                <button
+                                  key={`${clause.clauseId}-${opt.id}`}
+                                  type="button"
+                                  aria-pressed={isWeightActive}
+                                  onClick={() =>
+                                    handleSetClauseRiskWeight(clause.clauseId, opt.id)
+                                  }
+                                  className={`px-2 py-0.5 text-[10px] font-semibold rounded transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                                    isWeightActive
+                                      ? opt.activeClass
+                                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
 
             {/* Active Clause Detail & Replacement Text */}
@@ -477,19 +851,91 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
                   </h3>
                 </div>
                 <span
-                  className={`inline-flex items-center gap-1 text-xs font-semibold ${
-                    activeClause.severity === 'critical'
-                      ? 'text-red-700 dark:text-red-400'
-                      : 'text-amber-700 dark:text-amber-400'
+                  className={`inline-flex items-center gap-1 text-xs font-semibold shrink-0 ${
+                    isActiveClauseFlagged
+                      ? RISK_WEIGHT_OPTIONS.find((o) => o.id === activeClauseWeight)!
+                          .textClass
+                      : activeClause.severity === 'critical'
+                        ? 'text-red-700 dark:text-red-400'
+                        : 'text-amber-700 dark:text-amber-400'
                   }`}
                 >
-                  {activeClause.severity === 'critical' ? (
+                  {activeClauseWeight === 'critical' ? (
                     <ShieldAlert className="w-3.5 h-3.5" aria-hidden="true" />
                   ) : (
                     <AlertTriangle className="w-3.5 h-3.5" aria-hidden="true" />
                   )}
-                  {activeClause.severity === 'critical' ? 'Critical' : 'Warning'}
+                  {isActiveClauseFlagged
+                    ? `${
+                        RISK_WEIGHT_OPTIONS.find((o) => o.id === activeClauseWeight)!.label
+                      } Impact`
+                    : activeClause.severity === 'critical'
+                      ? 'Critical'
+                      : 'Warning'}
                 </span>
+              </div>
+
+              {/* Risk Weight Classification Toggle */}
+              <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-200">
+                    Negotiation Risk Weight
+                  </span>
+                  <div className="flex items-center gap-2 text-[11px] font-mono tabular-nums text-slate-500 dark:text-slate-400">
+                    <span>
+                      {isActiveClauseFlagged
+                        ? `+${RISK_WEIGHT_POINTS[activeClauseWeight]} pts`
+                        : 'Select to flag & classify'}
+                    </span>
+                    {isActiveClauseWeightCustom && (
+                      <button
+                        type="button"
+                        onClick={() => handleResetClauseRiskWeight(activeClause.clauseId)}
+                        className="font-sans text-blue-700 dark:text-blue-400 hover:underline cursor-pointer"
+                      >
+                        Reset default
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div
+                  role="group"
+                  aria-label={`Classify negotiation risk weight for ${activeClause.clauseTitle}`}
+                  className="grid grid-cols-3 gap-1.5"
+                >
+                  {RISK_WEIGHT_OPTIONS.map((opt) => {
+                    const selected = isActiveClauseFlagged && activeClauseWeight === opt.id;
+                    return (
+                      <button
+                        key={`detail-${opt.id}`}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() =>
+                          handleSetClauseRiskWeight(activeClause.clauseId, opt.id)
+                        }
+                        className={`px-2.5 py-1.5 text-xs font-semibold rounded-md border transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                          selected
+                            ? opt.activeClass
+                            : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  {isActiveClauseFlagged
+                    ? RISK_WEIGHT_OPTIONS.find((o) => o.id === activeClauseWeight)!
+                        .priorityHint
+                    : `Default baseline: ${
+                        RISK_WEIGHT_OPTIONS.find(
+                          (o) => o.id === activeClauseDefaultWeight
+                        )!.label
+                      } impact. Picking a weight flags this clause in your priority queue.`}
+                </p>
               </div>
 
               <div className="text-xs space-y-2">
@@ -649,9 +1095,13 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
 
           <div className="flex items-center justify-between gap-3">
             <span className="text-[11px] text-slate-500 dark:text-slate-400">
-              {flaggedClauses.length > 0
-                ? `Includes ${flaggedClauses.length} flagged contract redline note(s).`
-                : 'Auto-populated with your live calculated rates.'}
+              {flaggedClauses.length > 0 && activeCustomClausesForDraft
+                ? `Includes ${flaggedClauses.length} redline(s) + custom stipulations.`
+                : activeCustomClausesForDraft
+                  ? 'Includes your custom legal stipulations.'
+                  : flaggedClauses.length > 0
+                    ? `Includes ${flaggedClauses.length} flagged contract redline note(s).`
+                    : 'Auto-populated with your live calculated rates.'}
             </span>
             <button
               type="button"
@@ -665,6 +1115,120 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
             >
               <Copy className="w-3.5 h-3.5" aria-hidden="true" />
               Copy Email Script
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Custom Clauses Editor for Final Contract Drafts */}
+      <div
+        aria-label="Custom contract clauses"
+        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 sm:p-6 space-y-4"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <div className="inline-flex items-center gap-2">
+              <FilePenLine
+                className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0"
+                aria-hidden="true"
+              />
+              <h3 className="font-display text-base font-semibold text-slate-900 dark:text-slate-100">
+                Custom Clauses
+              </h3>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Draft your own custom legal stipulations to append to final contract redline packages and negotiation replies.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 text-xs font-mono tabular-nums text-slate-500 dark:text-slate-400">
+            <span>
+              {customStipulationCount}{' '}
+              {customStipulationCount === 1 ? 'stipulation' : 'stipulations'}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span>{customClauses.length} chars</span>
+          </div>
+        </div>
+
+        {/* Starter Clause Snippets */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 mr-1">
+            Quick Insert:
+          </span>
+          {CUSTOM_CLAUSE_SNIPPETS.map((snippet) => (
+            <button
+              key={snippet.id}
+              type="button"
+              onClick={() => handleAppendCustomSnippet(snippet.text, snippet.label)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-md transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <Plus className="w-3 h-3 text-blue-700 dark:text-blue-400" aria-hidden="true" />
+              {snippet.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Custom Legal Stipulations Text Area */}
+        <div>
+          <label
+            htmlFor="custom-contract-clauses"
+            className="sr-only"
+          >
+            Custom legal stipulations for final contract draft
+          </label>
+          <textarea
+            id="custom-contract-clauses"
+            rows={5}
+            value={customClauses}
+            onChange={(e) => setCustomClauses(e.target.value)}
+            placeholder="Write your custom contract clauses or special deal stipulations here (separate multiple clauses with a blank line)&#10;&#10;Example: Brand agrees not to use Creator’s likeness or deliverables for AI model training without separate written consent."
+            className="w-full p-3.5 text-xs sm:text-sm font-mono bg-slate-50/70 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 placeholder:font-sans leading-relaxed focus:bg-white dark:focus:bg-slate-950 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15 resize-y"
+          />
+        </div>
+
+        {/* Footer Controls */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <label className="inline-flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={includeCustomInDraft}
+              onChange={(e) => setIncludeCustomInDraft(e.target.checked)}
+              className="w-4 h-4 rounded accent-blue-700 dark:accent-blue-500 cursor-pointer"
+            />
+            <span>Include custom clauses in final contract draft &amp; email script</span>
+          </label>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {hasCustomClauses && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomClauses('');
+                  onNotify('Cleared custom clauses.');
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              >
+                <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                Clear
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={!hasCustomClauses}
+              onClick={() => copyText(trimmedCustomClauses, 'custom contract clauses')}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <Copy className="w-3.5 h-3.5" aria-hidden="true" />
+              Copy Custom Clauses
+            </button>
+            <button
+              type="button"
+              onClick={() => setExportModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-slate-900 dark:bg-blue-600 rounded-lg hover:bg-slate-800 dark:hover:bg-blue-500 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <FileText className="w-3.5 h-3.5" aria-hidden="true" />
+              Export Contract
             </button>
           </div>
         </div>
@@ -689,6 +1253,23 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
         riskAssessment={riskAssessment}
         initialBrandName={brandName}
         onFlagPresetClauses={handleFlagPresetClauses}
+        onCopyText={copyText}
+      />
+
+      {/* Plain-Text Contract Export Modal */}
+      <ContractExportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        brandName={brandName}
+        creatorName={creatorName}
+        onChangeBrandName={setBrandName}
+        onChangeCreatorName={setCreatorName}
+        profile={profile}
+        scope={scope}
+        result={result}
+        flaggedClauses={flaggedClauses}
+        clauseRiskWeights={clauseRiskWeights}
+        customClauses={activeCustomClausesForDraft}
         onCopyText={copyText}
       />
     </section>

@@ -18,6 +18,7 @@ import {
 } from '../types/calculator';
 import { useCurrency } from '../context/CurrencyContext';
 import { formatCurrency, formatCurrencyExact, formatNumber } from '../utils/pricingEngine';
+import { EngagementVelocityWidget } from './EngagementVelocityWidget';
 
 interface ProfileScopePanelProps {
   profile: CreatorProfile;
@@ -473,6 +474,13 @@ export const ProfileScopePanel: React.FC<ProfileScopePanelProps> = ({
           </span>
         </div>
       </section>
+
+      {/* Engagement Velocity & Valuation Sensitivity Widget */}
+      <EngagementVelocityWidget
+        profile={profile}
+        result={result}
+        onChangeProfile={onChangeProfile}
+      />
 
       {/* Section 3: Contract Scope & Rights Riders */}
       <section className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 sm:p-6 space-y-5">

@@ -385,6 +385,11 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
                 <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">
                   ({formatNumber(profile.medianViews)} / 1,000) × {formatCurrencyExact(baseB.activeCpm, currency)} CPM ×{' '}
                   {baseB.platformMultiplier.toFixed(2)}x × {baseB.engagementMultiplier.toFixed(2)}x ER
+                  {baseB.velocityEnabled && (
+                    <span className="text-blue-700 dark:text-blue-400">
+                      {' '}× {baseB.velocityMultiplier.toFixed(2)}x Vel
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="font-mono font-medium text-slate-900 dark:text-slate-100 shrink-0">
