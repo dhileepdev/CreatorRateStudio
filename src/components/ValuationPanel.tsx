@@ -35,6 +35,7 @@ import {
   formatCurrencyExact,
   formatNumber,
 } from '../utils/pricingEngine';
+import { MonthlyRevenueForecastWidget } from './MonthlyRevenueForecastWidget';
 
 interface ValuationPanelProps {
   profile: CreatorProfile;
@@ -958,6 +959,16 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
           </div>
         )}
       </section>
+
+      {/* Monthly Revenue Potential Forecast */}
+      <MonthlyRevenueForecastWidget
+        profile={profile}
+        scope={scope}
+        result={result}
+        inflationEnabled={inflationEnabled}
+        currentTargetMonthlyRevenue={targetMonthlyRevenueInput}
+        onApplyMonthlyTargetToSaveForm={(monthlyUsd) => setTargetMonthlyRevenueInput(monthlyUsd)}
+      />
 
       {/* Module 3: Three-Tier Package Matrix */}
       <section
