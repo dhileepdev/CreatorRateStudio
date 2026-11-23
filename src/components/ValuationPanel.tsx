@@ -35,6 +35,7 @@ import {
   formatCurrencyExact,
   formatNumber,
 } from '../utils/pricingEngine';
+import { KillFeeCalculatorWidget } from './KillFeeCalculatorWidget';
 import { MonthlyRevenueForecastWidget } from './MonthlyRevenueForecastWidget';
 
 interface ValuationPanelProps {
@@ -969,6 +970,9 @@ export const ValuationPanel: React.FC<ValuationPanelProps> = ({
         currentTargetMonthlyRevenue={targetMonthlyRevenueInput}
         onApplyMonthlyTargetToSaveForm={(monthlyUsd) => setTargetMonthlyRevenueInput(monthlyUsd)}
       />
+
+      {/* Kill Fee Cancellation Protection Calculator */}
+      <KillFeeCalculatorWidget result={result} />
 
       {/* Module 3: Three-Tier Package Matrix */}
       <section
