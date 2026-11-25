@@ -15,6 +15,10 @@ interface ContractExportModalProps {
   onClose: () => void;
   brandName: string;
   creatorName: string;
+  representedBy?: string;
+  primaryContactName?: string;
+  primaryContactRole?: string;
+  primaryContactEmail?: string;
   onChangeBrandName: (value: string) => void;
   onChangeCreatorName: (value: string) => void;
   profile: CreatorProfile;
@@ -31,6 +35,10 @@ export const ContractExportModal: React.FC<ContractExportModalProps> = ({
   onClose,
   brandName,
   creatorName,
+  representedBy = '',
+  primaryContactName = '',
+  primaryContactRole = '',
+  primaryContactEmail = '',
   onChangeBrandName,
   onChangeCreatorName,
   profile,
@@ -60,6 +68,10 @@ export const ContractExportModal: React.FC<ContractExportModalProps> = ({
       generatePlainTextContract({
         brandName,
         creatorName,
+        representedBy,
+        primaryContactName,
+        primaryContactRole,
+        primaryContactEmail,
         profile,
         scope,
         result,
@@ -71,6 +83,10 @@ export const ContractExportModal: React.FC<ContractExportModalProps> = ({
     [
       brandName,
       creatorName,
+      representedBy,
+      primaryContactName,
+      primaryContactRole,
+      primaryContactEmail,
       profile,
       scope,
       result,

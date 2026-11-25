@@ -569,6 +569,8 @@ export function generateNegotiationEmail(params: {
   flaggedClauses: ContractClause[];
   customClauses?: string;
   currency?: CurrencyCode;
+  representedBy?: string;
+  primaryContactName?: string;
 }): { subject: string; body: string } {
   const {
     scenario,
@@ -581,9 +583,19 @@ export function generateNegotiationEmail(params: {
     flaggedClauses,
     customClauses = '',
     currency = 'USD',
+    representedBy = '',
+    primaryContactName = '',
   } = params;
   const fmt = (val: number) => formatCurrencyExact(val, currency);
   const brand = brandName.trim() || '[Brand Name]';
+  const rep = representedBy.trim();
+  const contact = primaryContactName.trim();
+  const greeting = contact
+    ? `Hi ${contact},`
+    : rep
+      ? `Hi ${rep} Team,`
+      : `Hi ${brand} Team,`;
+  const subjectBrand = rep ? `${brand} (via ${rep})` : brand;
   const creator = creatorName.trim() || '[Your Name]';
   const platform = PLATFORM_SPECS[profile.platform];
   const { tierA_Organic, tierB_StandardGrowth, tierC_FullScale } = result.tieredPackages;
@@ -602,10 +614,10 @@ export function generateNegotiationEmail(params: {
   switch (scenario) {
     case 'three_tier_anchor':
       return {
-        subject: `Partnership Proposal & Scope Options — ${brand} x ${creator}`,
-        body: `Hi ${brand} Team,
+        subject: `Partnership Proposal & Scope Options — ${subjectBrand} x ${creator}`,
+        body: `${greeting}
 
-Thank you for reaching out—I'd love to collaborate on an upcoming ${platform.shortLabel} campaign.
+Thank you for reaching out—I'd love to collaborate on an upcoming ${platform.shortLabel} campaign for ${brand}.
 
 Based on my verified median reach of ${formatNumber(profile.medianViews)} views per post and ${b.calculatedER.toFixed(1)}% high-intent engagement rate (saves, shares, and comments), I've structured three partnership options so you can select the commercial rights and distribution level that best fits your campaign goals:
 
@@ -623,7 +635,7 @@ Based on my verified median reach of ${formatNumber(profile.medianViews)} views 
 
 All packages include up to 2 consolidated revision rounds and standard Net-14 payment terms upon delivery.${flaggedSummary}
 
-Let me know which option aligns best with your Q4 objectives and I can send over production dates.
+Let me know which option aligns best with your upcoming objectives and I can send over production dates.
 
 Best,
 ${creator}`,
@@ -631,10 +643,10 @@ ${creator}`,
 
     case 'lowball_pushback':
       return {
-        subject: `Re: ${brand} Partnership Scope & Budget Alignment`,
-        body: `Hi ${brand} Team,
+        subject: `Re: ${subjectBrand} Partnership Scope & Budget Alignment`,
+        body: `${greeting}
 
-Thank you for sharing your target budget of ${fmt(offeredBudget > 0 ? offeredBudget : b.baseCreationFee * 0.6)} for the ${platform.label} collaboration.
+Thank you for sharing your target budget of ${fmt(offeredBudget > 0 ? offeredBudget : b.baseCreationFee * 0.6)} for the ${brand} ${platform.label} collaboration.
 
 To keep pricing fair and consistent across partners, my Base Creation Fee for ${platform.deliverableUnit}—reflecting ${formatNumber(profile.medianViews)} median views and ${b.calculatedER.toFixed(1)}% audience engagement—is ${fmt(b.baseCreationFee)}. The full requested scope including commercial rights (${USAGE_RIGHTS_SPECS[scope.usageRightsTerm].label}${scope.whitelistingEnabled ? ', whitelisting' : ''}${scope.exclusivityType !== 'none' ? ', and exclusivity' : ''}) totals ${fmt(b.totalRecommendedRate)}.
 
@@ -650,10 +662,10 @@ ${creator}`,
 
     case 'reject_perpetual':
       return {
-        subject: `Re: ${brand} Agreement — Usage Term & Licensing Alignment`,
-        body: `Hi ${brand} Team,
+        subject: `Re: ${subjectBrand} Agreement — Usage Term & Licensing Alignment`,
+        body: `${greeting}
 
-I'm excited to move forward on the ${platform.label} deliverable. While reviewing the agreement, I noticed the usage clause currently grants perpetual, worldwide commercial rights.
+I'm excited to move forward on the ${brand} ${platform.label} deliverable. While reviewing the agreement, I noticed the usage clause currently grants perpetual, worldwide commercial rights.
 
 My standard Base Creation Fee of ${fmt(b.baseCreationFee)} covers creative production and organic posting. Because perpetual rights permanently transfer commercial exploitation of my likeness and prevent future licensing renewals, a full perpetual IP buyout carries a 350% buyout fee (${fmt(b.baseCreationFee * 3.5)}), bringing the total buyout package to ${fmt(b.baseCreationFee * 4.5)}.
 
@@ -669,10 +681,10 @@ ${creator}`,
 
     case 'defend_exclusivity':
       return {
-        subject: `Re: ${brand} Category Exclusivity Scope`,
-        body: `Hi ${brand} Team,
+        subject: `Re: ${subjectBrand} Category Exclusivity Scope`,
+        body: `${greeting}
 
-Thanks for sending over the brief! Regarding the category exclusivity request: because brand partnerships across ${NICHE_BENCHMARKS[profile.niche].label} represent my primary studio revenue, any category blackout carries a direct opportunity cost by requiring me to turn down incoming campaigns.
+Thanks for sending over the ${brand} brief! Regarding the category exclusivity request: because brand partnerships across ${NICHE_BENCHMARKS[profile.niche].label} represent my primary studio revenue, any category blackout carries a direct opportunity cost by requiring me to turn down incoming campaigns.
 
 To keep your budget focused on campaign performance while protecting your competitive positioning, I recommend two adjustments:
 1. Narrow the restriction from a blanket vertical prohibition (which carries a 200% opportunity-cost surcharge of ${fmt(b.baseCreationFee * 2)}) to a list of three (3) named direct competitors: [Competitor 1], [Competitor 2], and [Competitor 3].
@@ -688,10 +700,10 @@ ${creator}`,
 
     case 'kill_fee_payment':
       return {
-        subject: `Re: ${brand} Contract Terms — Payment Schedule & Kill Fee`,
-        body: `Hi ${brand} Team,
+        subject: `Re: ${subjectBrand} Contract Terms — Payment Schedule & Kill Fee`,
+        body: `${greeting}
 
-Before signing, I'd like to finalize three standard administrative terms so both our teams have clear expectations:
+Before signing the ${brand} agreement, I'd like to finalize three standard administrative terms so both our teams have clear expectations:
 
 1. Payment Timing: Net-14 from deliverable submission (or 50% upon execution / 50% within 14 days of delivery), not conditioned on end-client disbursement or delayed review cycles. Brand feedback window is 5 business days per round.
 2. Revision Cap: The ${fmt(b.baseCreationFee)} Base Fee includes 2 consolidated rounds of edits aligned with the approved brief; additional out-of-scope rounds are billed at ${fmt(scope.excessRevisionFeePerRound || 200)}/round.
@@ -1353,6 +1365,10 @@ function stripMarkdownSyntax(raw: string): string {
 export function generatePlainTextContract(params: {
   brandName?: string;
   creatorName?: string;
+  representedBy?: string;
+  primaryContactName?: string;
+  primaryContactRole?: string;
+  primaryContactEmail?: string;
   profile: CreatorProfile;
   scope: DealScope;
   result: CalculatedDealResult;
@@ -1364,6 +1380,10 @@ export function generatePlainTextContract(params: {
   const {
     brandName = '',
     creatorName = '',
+    representedBy = '',
+    primaryContactName = '',
+    primaryContactRole = '',
+    primaryContactEmail = '',
     profile,
     scope,
     result,
@@ -1382,6 +1402,11 @@ export function generatePlainTextContract(params: {
 
   const resolvedBrand = brandName.trim() || '[Brand Legal Name]';
   const resolvedCreator = creatorName.trim() || '[Creator Legal Name]';
+  const resolvedRep = representedBy.trim();
+  const resolvedContact = primaryContactName.trim();
+  const resolvedContactLine = resolvedContact
+    ? `${resolvedContact}${primaryContactRole.trim() ? `, ${primaryContactRole.trim()}` : ''}${primaryContactEmail.trim() ? ` <${primaryContactEmail.trim()}>` : ''}`
+    : '';
   const effectiveDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -1409,6 +1434,10 @@ export function generatePlainTextContract(params: {
     '========================================================================',
     `Effective Date: ${effectiveDate}`,
     `Brand / Client ("Brand"): ${resolvedBrand}`,
+    ...(resolvedRep ? [`Represented By / Agency: ${resolvedRep}`] : []),
+    ...(resolvedContactLine
+      ? [`Negotiation Primary Contact: ${resolvedContactLine}`]
+      : []),
     `Creator ("Creator"): ${resolvedCreator}`,
     `Settlement Currency: ${currency}`,
     '',
@@ -1497,9 +1526,9 @@ export function generatePlainTextContract(params: {
     `${nextSectionNum}. EXECUTION & SIGNATURES`,
     '   IN WITNESS WHEREOF, the parties hereto have executed this Agreement as of the Effective Date set forth above.',
     '',
-    `   BRAND / CLIENT: ${resolvedBrand}`,
+    `   BRAND / CLIENT: ${resolvedBrand}${resolvedRep ? ` (Represented by ${resolvedRep})` : ''}`,
     '   Authorized Signature: ___________________________   Date: _______________',
-    '   Printed Name & Title: ___________________________',
+    `   Printed Name & Title: ${resolvedContact ? `${resolvedContact}${primaryContactRole.trim() ? ` — ${primaryContactRole.trim()}` : ''}` : '___________________________'}`,
     '',
     `   CREATOR: ${resolvedCreator}`,
     '   Authorized Signature: ___________________________   Date: _______________',

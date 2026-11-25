@@ -805,6 +805,427 @@ async function startServer() {
     }
   });
 
+  app.post('/api/contract-clause-explain', async (req: Request, res: Response) => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey.trim() === '' || apiKey === 'MY_GEMINI_API_KEY') {
+      res.status(500).json({
+        error:
+          'Gemini API key is not configured. Please check your GEMINI_API_KEY in Settings > Secrets.',
+      });
+      return;
+    }
+
+    const body = (req.body ?? {}) as {
+      clause?: ContractStrategyClausePayload;
+      dealContext?: {
+        platformLabel?: string;
+        deliverableUnit?: string;
+        nicheLabel?: string;
+        followerTierLabel?: string;
+        usageRightsLabel?: string;
+        exclusivityLabel?: string;
+        baseCreationFeeUsd?: number;
+        totalRecommendedRateUsd?: number;
+      };
+      currency?: {
+        code?: string;
+        rateFromUsd?: number;
+        decimals?: number;
+      };
+    };
+
+    const clause = body.clause;
+    if (!clause || typeof clause.clauseTitle !== 'string') {
+      res.status(400).json({ error: 'A valid contract clause payload is required.' });
+      return;
+    }
+
+    const currencyCode =
+      typeof body.currency?.code === 'string' && body.currency.code.trim()
+        ? body.currency.code.trim().toUpperCase()
+        : 'USD';
+    const currencyRate =
+      typeof body.currency?.rateFromUsd === 'number' &&
+      Number.isFinite(body.currency.rateFromUsd) &&
+      body.currency.rateFromUsd > 0
+        ? body.currency.rateFromUsd
+        : 1;
+    const currencyDecimals =
+      typeof body.currency?.decimals === 'number' &&
+      Number.isInteger(body.currency.decimals) &&
+      body.currency.decimals >= 0
+        ? body.currency.decimals
+        : 2;
+
+    const formatLocal = (usd: number | undefined) => {
+      const val = (typeof usd === 'number' && Number.isFinite(usd) ? usd : 0) * currencyRate;
+      return `${currencyCode} ${val.toLocaleString('en-US', {
+        minimumFractionDigits: currencyDecimals,
+        maximumFractionDigits: currencyDecimals,
+      })}`;
+    };
+
+    const ai = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
+
+    const systemInstruction = [
+      'You are an experienced creator-economy business advisor and plain-English contract educator.',
+      'Explain a single brand sponsorship contract clause clearly for an independent creator who wants to understand its real-world, long-term impact on their business.',
+      'Focus concretely on: (1) what the clause actually means without legalese, (2) long-term multi-year business/brand-equity/income impact, (3) hidden traps if signed unedited, and (4) potential benefits or fair-use scenarios where a bounded version of this clause protects or monetizes the creator.',
+      `Reference the creator's deal context and monetary scale in ${currencyCode} where helpful, and keep every point crisp, specific, and practical.`,
+    ].join('\n');
+
+    const prompt = JSON.stringify(
+      {
+        clause: {
+          clauseId: clause.clauseId,
+          clauseTitle: clause.clauseTitle,
+          category: clause.category,
+          severity: clause.severity,
+          redFlagPattern: clause.redFlagPattern,
+          commercialAdvice: clause.advice,
+          benchmarkReplacement: clause.replacementText,
+        },
+        creatorDealContext: {
+          platform: body.dealContext?.platformLabel ?? 'Creator Sponsorship',
+          deliverable: body.dealContext?.deliverableUnit ?? 'Sponsored Content',
+          niche: body.dealContext?.nicheLabel ?? 'General',
+          tier: body.dealContext?.followerTierLabel ?? 'Independent Creator',
+          usageRights: body.dealContext?.usageRightsLabel ?? 'Standard',
+          exclusivity: body.dealContext?.exclusivityLabel ?? 'None',
+          baseCreationFee: formatLocal(body.dealContext?.baseCreationFeeUsd),
+          totalDealRate: formatLocal(body.dealContext?.totalRecommendedRateUsd),
+        },
+      },
+      null,
+      2
+    );
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-4-hydrogen',
+        contents: `Provide a plain-English business explanation for this sponsorship contract clause:\n\n${prompt}`,
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              plainEnglishSummary: {
+                type: Type.STRING,
+                description:
+                  '2-3 sentence jargon-free explanation of what this clause actually does in everyday creator terms.',
+              },
+              longTermBusinessImpact: {
+                type: Type.STRING,
+                description:
+                  '2-3 sentence analysis of how this clause affects the creator’s multi-year revenue, brand equity, portfolio control, or legal exposure.',
+              },
+              potentialTraps: {
+                type: Type.ARRAY,
+                description:
+                  '2 to 3 concrete traps or worst-case scenarios if the creator signs this clause as-is.',
+                items: { type: Type.STRING },
+              },
+              potentialBenefitsOrFairUse: {
+                type: Type.ARRAY,
+                description:
+                  '2 concrete ways a properly bounded or paid version of this clause can benefit or protect the creator’s business.',
+                items: { type: Type.STRING },
+              },
+              bottomLineVerdict: {
+                type: Type.STRING,
+                description:
+                  '1 clear, actionable sentence summarizing how the creator should handle this clause before signing.',
+              },
+            },
+            required: [
+              'plainEnglishSummary',
+              'longTermBusinessImpact',
+              'potentialTraps',
+              'potentialBenefitsOrFairUse',
+              'bottomLineVerdict',
+            ],
+          },
+        },
+      });
+
+      const rawText = (response.text ?? '').trim();
+      if (!rawText) {
+        res.status(502).json({
+          error: 'AI Explain returned an empty response. Please try again.',
+        });
+        return;
+      }
+
+      res.json(JSON.parse(rawText));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const lower = msg.toLowerCase();
+      if (
+        lower.includes('permission_denied') ||
+        lower.includes('api_key_invalid') ||
+        lower.includes('api key not valid') ||
+        lower.includes('403')
+      ) {
+        res.status(403).json({
+          error:
+            'Gemini API key was rejected. Please verify your API key in Settings > Secrets.',
+        });
+        return;
+      }
+      if (lower.includes('resource_exhausted') || lower.includes('429')) {
+        res.status(429).json({
+          error: 'Rate limit reached for AI Explain. Please wait a moment and try again.',
+        });
+        return;
+      }
+      res.status(500).json({
+        error: `Failed to generate clause explanation: ${msg}`,
+      });
+    }
+  });
+
+  app.post('/api/contract-bulk-propose-edits', async (req: Request, res: Response) => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey.trim() === '' || apiKey === 'MY_GEMINI_API_KEY') {
+      res.status(500).json({
+        error:
+          'Gemini API key is not configured. Please check your GEMINI_API_KEY in Settings > Secrets.',
+      });
+      return;
+    }
+
+    const body = (req.body ?? {}) as {
+      clauses?: Array<ContractStrategyClausePayload & { riskWeight?: 'critical' | 'moderate' }>;
+      dealContext?: {
+        platformLabel?: string;
+        deliverableUnit?: string;
+        nicheLabel?: string;
+        usageRightsLabel?: string;
+        whitelistingEnabled?: boolean;
+        whitelistingExpirationDays?: number;
+        exclusivityLabel?: string;
+        turnaroundLabel?: string;
+        includedRevisionRounds?: number;
+        excessRevisionFeePerRoundUsd?: number;
+        baseCreationFeeUsd?: number;
+        totalRecommendedRateUsd?: number;
+      };
+      brandName?: string;
+      currency?: {
+        code?: string;
+        rateFromUsd?: number;
+        decimals?: number;
+      };
+    };
+
+    const clauses = Array.isArray(body.clauses) ? body.clauses : [];
+    if (clauses.length === 0) {
+      res.status(400).json({
+        error:
+          'Flag at least 1 Critical or Moderate clause to generate bulk creator-friendly contract edits.',
+      });
+      return;
+    }
+
+    if (clauses.length > 15) {
+      res.status(400).json({
+        error: 'A maximum of 15 clauses can be processed in a single bulk edit request.',
+      });
+      return;
+    }
+
+    const currencyCode =
+      typeof body.currency?.code === 'string' && body.currency.code.trim()
+        ? body.currency.code.trim().toUpperCase()
+        : 'USD';
+    const currencyRate =
+      typeof body.currency?.rateFromUsd === 'number' &&
+      Number.isFinite(body.currency.rateFromUsd) &&
+      body.currency.rateFromUsd > 0
+        ? body.currency.rateFromUsd
+        : 1;
+    const currencyDecimals =
+      typeof body.currency?.decimals === 'number' &&
+      Number.isInteger(body.currency.decimals) &&
+      body.currency.decimals >= 0
+        ? body.currency.decimals
+        : 2;
+
+    const formatLocal = (usd: number | undefined) => {
+      const val = (typeof usd === 'number' && Number.isFinite(usd) ? usd : 0) * currencyRate;
+      return `${currencyCode} ${val.toLocaleString('en-US', {
+        minimumFractionDigits: currencyDecimals,
+        maximumFractionDigits: currencyDecimals,
+      })}`;
+    };
+
+    const brandLabel =
+      typeof body.brandName === 'string' && body.brandName.trim()
+        ? body.brandName.trim()
+        : 'Brand';
+
+    const ai = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        },
+      },
+    });
+
+    const systemInstruction = [
+      'You are a senior creator-economy entertainment & commercial contracts attorney.',
+      'Your task is to generate standard, balanced, creator-friendly replacement contract language for ALL flagged Critical and Moderate clauses supplied in the request.',
+      'Rules:',
+      '- Return one entry in "proposedEdits" for EVERY clause in the input, preserving its exact clauseId, clauseTitle, and riskWeight ("critical" or "moderate").',
+      '- Write clean, professional legal prose suitable for direct insertion into a Word or Google Docs sponsorship SOW—NO Markdown syntax (no **, no ##, no backticks) inside "proposedClauseText" or "combinedRedlineDocument".',
+      '- Tailor every proposed clause to the exact deal context (deliverable, usage rights term, whitelisting expiration, exclusivity scope, revision round cap, excess revision fee, and calculated deal fees in the specified currencyCode).',
+      `- Address the counterparty as "${brandLabel}" or "Brand" consistently.`,
+      '- Keep "combinedRedlineDocument" cleanly formatted in plain text with numbered sections so the creator can copy-paste the full schedule directly into an agreement addendum or email.',
+    ].join('\n');
+
+    const prompt = JSON.stringify(
+      {
+        brandName: brandLabel,
+        dealScope: {
+          platform: body.dealContext?.platformLabel ?? 'Creator Sponsorship',
+          deliverable: body.dealContext?.deliverableUnit ?? 'Sponsored Content',
+          niche: body.dealContext?.nicheLabel ?? 'General',
+          usageRights: body.dealContext?.usageRightsLabel ?? 'Standard Organic',
+          whitelisting: body.dealContext?.whitelistingEnabled
+            ? `Enabled (${body.dealContext?.whitelistingExpirationDays ?? 90}-day cap)`
+            : 'Not included',
+          exclusivity: body.dealContext?.exclusivityLabel ?? 'None',
+          turnaround: body.dealContext?.turnaroundLabel ?? 'Standard (14 days)',
+          includedRevisions: body.dealContext?.includedRevisionRounds ?? 2,
+          excessRevisionFee: formatLocal(body.dealContext?.excessRevisionFeePerRoundUsd ?? 200),
+          baseCreationFee: formatLocal(body.dealContext?.baseCreationFeeUsd),
+          totalDealRate: formatLocal(body.dealContext?.totalRecommendedRateUsd),
+        },
+        clausesToRedraft: clauses.map((c) => ({
+          clauseId: c.clauseId,
+          clauseTitle: c.clauseTitle,
+          category: c.category,
+          riskWeight: c.riskWeight === 'moderate' ? 'moderate' : 'critical',
+          predatoryPattern: c.redFlagPattern,
+          creatorRiskAdvice: c.advice,
+          baselineBenchmark: c.replacementText,
+        })),
+      },
+      null,
+      2
+    );
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-4-hydrogen',
+        contents: `Draft standard, creator-friendly replacement clauses for all flagged Critical and Moderate items below:\n\n${prompt}`,
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              packageOverview: {
+                type: Type.STRING,
+                description:
+                  '2-sentence summary of the protective updates made across all Critical and Moderate flagged clauses.',
+              },
+              proposedEdits: {
+                type: Type.ARRAY,
+                description:
+                  'One creator-friendly replacement clause object per supplied clause.',
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    clauseId: { type: Type.INTEGER },
+                    clauseTitle: { type: Type.STRING },
+                    riskWeight: {
+                      type: Type.STRING,
+                      description: 'Must be "critical" or "moderate".',
+                    },
+                    editSummary: {
+                      type: Type.STRING,
+                      description:
+                        '1-sentence summary of what predatory language was removed and replaced.',
+                    },
+                    proposedClauseText: {
+                      type: Type.STRING,
+                      description:
+                        'Clean plain-text (non-Markdown) creator-friendly contract clause ready to paste into an agreement.',
+                    },
+                    negotiationNote: {
+                      type: Type.STRING,
+                      description:
+                        '1-sentence polite comment to attach in Google Docs or Word explaining why this standard language benefits both parties.',
+                    },
+                  },
+                  required: [
+                    'clauseId',
+                    'clauseTitle',
+                    'riskWeight',
+                    'editSummary',
+                    'proposedClauseText',
+                    'negotiationNote',
+                  ],
+                },
+              },
+              combinedRedlineDocument: {
+                type: Type.STRING,
+                description:
+                  'Complete plain-text (no Markdown) numbered schedule combining all proposed replacement clauses ready for direct copy-paste.',
+              },
+            },
+            required: ['packageOverview', 'proposedEdits', 'combinedRedlineDocument'],
+          },
+        },
+      });
+
+      const rawText = (response.text ?? '').trim();
+      if (!rawText) {
+        res.status(502).json({
+          error: 'Bulk Propose Edits returned an empty response. Please try again.',
+        });
+        return;
+      }
+
+      res.json(JSON.parse(rawText));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const lower = msg.toLowerCase();
+      if (
+        lower.includes('permission_denied') ||
+        lower.includes('api_key_invalid') ||
+        lower.includes('api key not valid') ||
+        lower.includes('403')
+      ) {
+        res.status(403).json({
+          error:
+            'Gemini API key was rejected. Please verify your API key in Settings > Secrets.',
+        });
+        return;
+      }
+      if (lower.includes('resource_exhausted') || lower.includes('429')) {
+        res.status(429).json({
+          error:
+            'Rate limit reached for Bulk Propose Edits. Please wait a moment and try again.',
+        });
+        return;
+      }
+      res.status(500).json({
+        error: `Failed to generate bulk contract edits: ${msg}`,
+      });
+    }
+  });
+
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({

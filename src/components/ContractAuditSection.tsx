@@ -2,12 +2,15 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowDownWideNarrow,
+  ArrowLeftRight,
   ArrowRight,
+  BookMarked,
   CheckCircle2,
   CheckSquare,
   Copy,
   FilePenLine,
   FileText,
+  Lightbulb,
   Mail,
   Plus,
   RotateCcw,
@@ -22,9 +25,15 @@ import {
 import { CONTRACT_RED_FLAGS } from '../data/benchmarks';
 import { CLAUSE_LEGAL_GLOSSARY } from '../data/clauseLegalGlossary';
 import {
+  ClauseVariantPosture,
+  getClauseLibraryVariants,
+  resolveClauseVariant,
+} from '../data/clauseLibraryAlternatives';
+import {
   CalculatedDealResult,
   ClauseCategory,
   ClauseRiskWeight,
+  ContractClause,
   ContractRiskLevel,
   CreatorProfile,
   DealScope,
@@ -42,10 +51,24 @@ import {
   RISK_WEIGHT_RANK,
 } from '../utils/pricingEngine';
 import { AuditProgressBar } from './AuditProgressBar';
+import {
+  BrandAgencyProfile,
+  BrandAgencyProfileCard,
+  buildPersonalizedClauseCommentary,
+  EMPTY_BRAND_AGENCY_PROFILE,
+  hasCounterpartyProfileDetails,
+} from './BrandAgencyProfileCard';
+import {
+  BulkProposeEditsModal,
+  BulkProposedClauseEdit,
+} from './BulkProposeEditsModal';
+import { ClauseAiExplainModal } from './ClauseAiExplainModal';
 import { ClauseLegalGlossaryPopover } from './ClauseLegalGlossaryPopover';
+import { ClauseLibraryModal } from './ClauseLibraryModal';
 import { ContractExportModal } from './ContractExportModal';
 import { ContractNegotiationStrategyModal } from './ContractNegotiationStrategyModal';
 import { ContractRiskHeatmap } from './ContractRiskHeatmap';
+import { ContractTimelineTracker } from './ContractTimelineTracker';
 import { LegalLibraryPanel } from './LegalLibraryPanel';
 import {
   NegotiationLogEntry,
@@ -53,6 +76,11 @@ import {
   NegotiationLogPanel,
 } from './NegotiationLogPanel';
 import { NegotiationSessionTimer } from './NegotiationSessionTimer';
+import {
+  NegotiationSimulatorPanel,
+  NegotiationStance,
+  resolveSimulatedVariant,
+} from './NegotiationSimulatorPanel';
 
 interface ContractAuditSectionProps {
   profile: CreatorProfile;
@@ -105,6 +133,9 @@ const RISK_WEIGHT_OPTIONS: Array<{
 const CUSTOM_CLAUSES_STORAGE_KEY = 'creator_rate_studio_custom_clauses_v1';
 const NEGOTIATION_LOG_STORAGE_KEY = 'creator_rate_studio_negotiation_log_v1';
 const REVIEWED_CLAUSES_STORAGE_KEY = 'creator_rate_studio_reviewed_clauses_v1';
+const CLAUSE_VARIANTS_STORAGE_KEY = 'creator_rate_studio_clause_variants_v1';
+const BRAND_AGENCY_PROFILE_STORAGE_KEY = 'creator_rate_studio_brand_agency_profile_v1';
+const NEGOTIATION_STANCE_STORAGE_KEY = 'creator_rate_studio_negotiation_stance_v1';
 
 const CUSTOM_CLAUSE_SNIPPETS: Array<{ id: string; label: string; text: string }> = [
   {
@@ -169,6 +200,75 @@ function loadSavedReviewedClauses(): number[] {
   }
 }
 
+function loadSavedClauseVariants(): Partial<Record<number, string>> {
+  try {
+    const raw = localStorage.getItem(CLAUSE_VARIANTS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const valid: Partial<Record<number, string>> = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      const id = Number(k);
+      if (Number.isFinite(id) && typeof v === 'string' && v.trim() !== '') {
+        valid[id] = v;
+      }
+    }
+    return valid;
+  } catch {
+    return {};
+  }
+}
+
+function loadSavedBrandAgencyProfile(): BrandAgencyProfile {
+  try {
+    const raw = localStorage.getItem(BRAND_AGENCY_PROFILE_STORAGE_KEY);
+    if (!raw) return EMPTY_BRAND_AGENCY_PROFILE;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return EMPTY_BRAND_AGENCY_PROFILE;
+    }
+    const repType =
+      parsed.representationType === 'marketing_agency' ||
+      parsed.representationType === 'in_house_legal' ||
+      parsed.representationType === 'direct_brand'
+        ? parsed.representationType
+        : 'direct_brand';
+    return {
+      brandName: typeof parsed.brandName === 'string' ? parsed.brandName : '',
+      representedBy:
+        typeof parsed.representedBy === 'string' ? parsed.representedBy : '',
+      representationType: repType,
+      primaryContactName:
+        typeof parsed.primaryContactName === 'string'
+          ? parsed.primaryContactName
+          : '',
+      primaryContactRole:
+        typeof parsed.primaryContactRole === 'string'
+          ? parsed.primaryContactRole
+          : '',
+      primaryContactEmail:
+        typeof parsed.primaryContactEmail === 'string'
+          ? parsed.primaryContactEmail
+          : '',
+      dealNotes: typeof parsed.dealNotes === 'string' ? parsed.dealNotes : '',
+    };
+  } catch {
+    return EMPTY_BRAND_AGENCY_PROFILE;
+  }
+}
+
+function loadSavedNegotiationStance(): NegotiationStance {
+  try {
+    const raw = localStorage.getItem(NEGOTIATION_STANCE_STORAGE_KEY);
+    if (raw === 'aggressive' || raw === 'standard' || raw === 'collaborative') {
+      return raw;
+    }
+    return 'standard';
+  } catch {
+    return 'standard';
+  }
+}
+
 export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
   profile,
   scope,
@@ -189,10 +289,25 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
   >({});
   const [activeClauseId, setActiveClauseId] = useState<number>(1);
   const [scenario, setScenario] = useState<EmailScenarioId>('three_tier_anchor');
-  const [brandName, setBrandName] = useState('');
+  const [brandAgencyProfile, setBrandAgencyProfile] = useState<BrandAgencyProfile>(
+    loadSavedBrandAgencyProfile
+  );
+  const brandName = brandAgencyProfile.brandName;
+  const setBrandName = (value: string) =>
+    setBrandAgencyProfile((prev) => ({ ...prev, brandName: value }));
   const [creatorName, setCreatorName] = useState('');
   const [offeredBudget, setOfferedBudget] = useState<number>(0);
   const [strategyModalOpen, setStrategyModalOpen] = useState(false);
+  const [bulkEditsModalOpen, setBulkEditsModalOpen] = useState(false);
+  const [clauseLibraryOpen, setClauseLibraryOpen] = useState(false);
+  const [clauseLibraryInitialId, setClauseLibraryInitialId] = useState<number>(1);
+  const [selectedClauseVariants, setSelectedClauseVariants] = useState<
+    Partial<Record<number, string>>
+  >(loadSavedClauseVariants);
+  const [negotiationStance, setNegotiationStance] = useState<NegotiationStance>(
+    loadSavedNegotiationStance
+  );
+  const [aiExplainClause, setAiExplainClause] = useState<ContractClause | null>(null);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [customClauses, setCustomClauses] = useState<string>(loadSavedCustomClauses);
   const [includeCustomInDraft, setIncludeCustomInDraft] = useState<boolean>(true);
@@ -232,6 +347,41 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
     }
   }, [manuallyReviewedIds]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        CLAUSE_VARIANTS_STORAGE_KEY,
+        JSON.stringify(selectedClauseVariants)
+      );
+    } catch {
+      // Ignore storage quota errors in restricted browser contexts
+    }
+  }, [selectedClauseVariants]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        BRAND_AGENCY_PROFILE_STORAGE_KEY,
+        JSON.stringify(brandAgencyProfile)
+      );
+    } catch {
+      // Ignore storage quota errors in restricted browser contexts
+    }
+  }, [brandAgencyProfile]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(NEGOTIATION_STANCE_STORAGE_KEY, negotiationStance);
+    } catch {
+      // Ignore storage quota errors in restricted browser contexts
+    }
+  }, [negotiationStance]);
+
+  const handleResetBrandAgencyProfile = () => {
+    setBrandAgencyProfile(EMPTY_BRAND_AGENCY_PROFILE);
+    onNotify('Cleared Brand/Agency Profile details.');
+  };
+
   const handleAddNegotiationLogEntry = (
     clauseId: number,
     entryType: NegotiationLogEntryType,
@@ -252,6 +402,28 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
 
   const handleDeleteNegotiationLogEntry = (entryId: string) => {
     setNegotiationLog((prev) => prev.filter((item) => item.id !== entryId));
+  };
+
+  const handleLogBulkProposedEdits = (edits: BulkProposedClauseEdit[]) => {
+    const nowIso = new Date().toISOString();
+    const newEntries: NegotiationLogEntry[] = edits.map((edit, idx) => ({
+      id: `log-bulk-${Date.now()}-${idx}-${edit.clauseId}`,
+      clauseId: edit.clauseId,
+      entryType: 'creator_counter',
+      note: `Proposed creator-friendly redline (${edit.riskWeight.toUpperCase()}): ${edit.editSummary}`,
+      createdAt: nowIso,
+    }));
+    setNegotiationLog((prev) => [...newEntries, ...prev]);
+    onNotify(`Logged ${edits.length} proposed redlines to Negotiation Log.`);
+  };
+
+  const handleAppendBulkEditsToCustomClauses = (combinedDocument: string) => {
+    setCustomClauses((prev) => {
+      const cleaned = prev.trim();
+      return cleaned ? `${cleaned}\n\n${combinedDocument}` : combinedDocument;
+    });
+    setIncludeCustomInDraft(true);
+    onNotify('Appended bulk proposed edits to Custom Clauses.');
   };
 
   const handleClearNegotiationLog = () => {
@@ -385,6 +557,106 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
     }
   };
 
+  const handleOpenClauseLibrary = (clauseId?: number) => {
+    setClauseLibraryInitialId(clauseId ?? activeClauseId);
+    setClauseLibraryOpen(true);
+  };
+
+  const handleSwapClauseVariant = (
+    clauseId: number,
+    variantId: string,
+    variantLabel: string
+  ) => {
+    setSelectedClauseVariants((prev) => {
+      const next = { ...prev };
+      if (variantId === 'standard') {
+        delete next[clauseId];
+      } else {
+        next[clauseId] = variantId;
+      }
+      return next;
+    });
+    setActiveClauseId(clauseId);
+    onNotify(`Clause #${clauseId} swapped to "${variantLabel}".`);
+  };
+
+  const handleApplyPostureToAll = (posture: ClauseVariantPosture) => {
+    if (posture === 'standard') {
+      setSelectedClauseVariants({});
+      onNotify('All 15 clauses reset to Standard Benchmark language.');
+      return;
+    }
+    const next: Partial<Record<number, string>> = {};
+    for (const clause of CONTRACT_RED_FLAGS) {
+      const match = getClauseLibraryVariants(clause.clauseId).find(
+        (v) => v.posture === posture
+      );
+      if (match && match.id !== 'standard') {
+        next[clause.clauseId] = match.id;
+      }
+    }
+    setSelectedClauseVariants(next);
+    onNotify(
+      posture === 'creator_friendly'
+        ? 'Applied Creator-Friendly alternatives across all 15 clauses.'
+        : 'Applied Balanced Compromise alternatives across all 15 clauses.'
+    );
+  };
+
+  const handleResetAllVariants = () => {
+    setSelectedClauseVariants({});
+    onNotify('Reset all swapped clauses back to Standard Benchmark.');
+  };
+
+  const handleApplyStanceToCriticalClauses = (
+    stance: NegotiationStance,
+    clauseIds: number[]
+  ) => {
+    setSelectedClauseVariants((prev) => {
+      const next = { ...prev };
+      for (const id of clauseIds) {
+        const variant = resolveSimulatedVariant(id, stance);
+        if (variant.id === 'standard') {
+          delete next[id];
+        } else {
+          next[id] = variant.id;
+        }
+      }
+      return next;
+    });
+    const label =
+      stance === 'aggressive'
+        ? 'Aggressive'
+        : stance === 'collaborative'
+          ? 'Collaborative'
+          : 'Standard';
+    onNotify(
+      `Applied ${label} stance edits to ${clauseIds.length} critical clause(s).`
+    );
+  };
+
+  const resolvedClauses = useMemo(() => {
+    return CONTRACT_RED_FLAGS.map((clause) => {
+      const chosen = resolveClauseVariant(
+        clause.clauseId,
+        selectedClauseVariants[clause.clauseId]
+      );
+      return chosen.id === 'standard'
+        ? clause
+        : { ...clause, replacementText: chosen.clauseText };
+    });
+  }, [selectedClauseVariants]);
+
+  const swappedVariantCount = useMemo(() => {
+    return CONTRACT_RED_FLAGS.filter((clause) => {
+      const chosen = resolveClauseVariant(
+        clause.clauseId,
+        selectedClauseVariants[clause.clauseId]
+      );
+      return chosen.id !== 'standard';
+    }).length;
+  }, [selectedClauseVariants]);
+
   const categories: Array<'All' | ClauseCategory> = [
     'All',
     'Payment',
@@ -394,22 +666,22 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
   ];
 
   const flaggedClauses = useMemo(() => {
-    return CONTRACT_RED_FLAGS.filter((c) => flaggedClauseIds.includes(c.clauseId)).sort(
-      (a, b) => {
+    return resolvedClauses
+      .filter((c) => flaggedClauseIds.includes(c.clauseId))
+      .sort((a, b) => {
         const rankA = RISK_WEIGHT_RANK[resolveClauseRiskWeight(a, clauseRiskWeights)];
         const rankB = RISK_WEIGHT_RANK[resolveClauseRiskWeight(b, clauseRiskWeights)];
         return rankB - rankA || a.clauseId - b.clauseId;
-      }
-    );
-  }, [flaggedClauseIds, clauseRiskWeights]);
+      });
+  }, [resolvedClauses, flaggedClauseIds, clauseRiskWeights]);
 
   const filteredClauses = useMemo(() => {
     const normalizedQuery = clauseSearchQuery.trim().toLowerCase();
 
     const byCategory =
       categoryFilter === 'All'
-        ? CONTRACT_RED_FLAGS
-        : CONTRACT_RED_FLAGS.filter((c) => c.category === categoryFilter);
+        ? resolvedClauses
+        : resolvedClauses.filter((c) => c.category === categoryFilter);
 
     const byWeight =
       weightFilter === 'All'
@@ -447,6 +719,7 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
       return a.clauseId - b.clauseId;
     });
   }, [
+    resolvedClauses,
     categoryFilter,
     weightFilter,
     clauseSearchQuery,
@@ -456,8 +729,12 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
   ]);
 
   const activeClause =
-    CONTRACT_RED_FLAGS.find((c) => c.clauseId === activeClauseId) ??
-    CONTRACT_RED_FLAGS[0];
+    resolvedClauses.find((c) => c.clauseId === activeClauseId) ??
+    resolvedClauses[0];
+  const activeClauseVariant = resolveClauseVariant(
+    activeClause.clauseId,
+    selectedClauseVariants[activeClause.clauseId]
+  );
   const isActiveClauseFlagged = flaggedClauseIds.includes(activeClause.clauseId);
   const activeClauseWeight = resolveClauseRiskWeight(activeClause, clauseRiskWeights);
   const activeClauseDefaultWeight = getDefaultClauseRiskWeight(activeClause);
@@ -469,10 +746,10 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
     () =>
       calculateContractRiskScore(
         flaggedClauses,
-        CONTRACT_RED_FLAGS,
+        resolvedClauses,
         clauseRiskWeights
       ),
-    [flaggedClauses, clauseRiskWeights]
+    [flaggedClauses, resolvedClauses, clauseRiskWeights]
   );
 
   const cumulativeRiskWeightScore = useMemo(() => {
@@ -512,6 +789,21 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
               icon: 'text-amber-700 dark:text-amber-400',
             };
 
+  const hasCounterpartyProfile = useMemo(
+    () => hasCounterpartyProfileDetails(brandAgencyProfile),
+    [brandAgencyProfile]
+  );
+
+  const activeClauseCommentary = useMemo(
+    () =>
+      buildPersonalizedClauseCommentary(
+        brandAgencyProfile,
+        activeClause,
+        activeClauseWeight
+      ),
+    [brandAgencyProfile, activeClause, activeClauseWeight]
+  );
+
   const generatedEmail = useMemo(
     () =>
       generateNegotiationEmail({
@@ -525,6 +817,8 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
         flaggedClauses,
         customClauses: activeCustomClausesForDraft,
         currency,
+        representedBy: brandAgencyProfile.representedBy,
+        primaryContactName: brandAgencyProfile.primaryContactName,
       }),
     [
       scenario,
@@ -537,6 +831,8 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
       flaggedClauses,
       activeCustomClausesForDraft,
       currency,
+      brandAgencyProfile.representedBy,
+      brandAgencyProfile.primaryContactName,
     ]
   );
 
@@ -552,6 +848,28 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
   const handleCopyAllRedlines = () => {
     if (flaggedClauses.length === 0 && !activeCustomClausesForDraft) return;
     const sections: string[] = [];
+
+    if (hasCounterpartyProfile) {
+      const headerLines = [
+        '### [COUNTERPARTY PROFILE]',
+        brandAgencyProfile.brandName.trim()
+          ? `Brand: ${brandAgencyProfile.brandName.trim()}`
+          : null,
+        brandAgencyProfile.representedBy.trim()
+          ? `Represented By: ${brandAgencyProfile.representedBy.trim()}`
+          : null,
+        brandAgencyProfile.primaryContactName.trim()
+          ? `Negotiation Primary Contact: ${brandAgencyProfile.primaryContactName.trim()}${
+              brandAgencyProfile.primaryContactRole.trim()
+                ? ` (${brandAgencyProfile.primaryContactRole.trim()})`
+                : ''
+            }`
+          : null,
+      ].filter((line): line is string => line !== null);
+      if (headerLines.length > 1) {
+        sections.push(headerLines.join('\n'));
+      }
+    }
 
     if (flaggedClauses.length > 0) {
       const redlineBundle = flaggedClauses
@@ -643,6 +961,32 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
           >
             <Scale className="w-3.5 h-3.5" aria-hidden="true" />
             Negotiation Strategy
+          </button>
+          <button
+            type="button"
+            onClick={() => handleOpenClauseLibrary()}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 font-semibold text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+          >
+            <BookMarked className="w-3.5 h-3.5 text-blue-700 dark:text-blue-400" aria-hidden="true" />
+            Clause Library
+            {swappedVariantCount > 0 && (
+              <span className="font-mono tabular-nums text-emerald-700 dark:text-emerald-400">
+                ({swappedVariantCount} swapped)
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setBulkEditsModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 font-semibold text-blue-800 dark:text-blue-200 bg-blue-50 dark:bg-blue-950/70 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100/80 dark:hover:bg-blue-900/60 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+          >
+            <FilePenLine className="w-3.5 h-3.5" aria-hidden="true" />
+            Bulk Propose Edits
+            {riskAssessment.weightCounts.critical + riskAssessment.weightCounts.moderate > 0 && (
+              <span className="font-mono tabular-nums">
+                ({riskAssessment.weightCounts.critical + riskAssessment.weightCounts.moderate})
+              </span>
+            )}
           </button>
           <button
             type="button"
@@ -877,6 +1221,14 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
         );
       })()}
 
+      {/* Brand / Agency Counterparty Profile */}
+      <BrandAgencyProfileCard
+        profile={brandAgencyProfile}
+        onChange={setBrandAgencyProfile}
+        onReset={handleResetBrandAgencyProfile}
+        onCopyText={copyText}
+      />
+
       {/* Clause Review Completion Progress Tracker */}
       <AuditProgressBar
         totalClauses={CONTRACT_RED_FLAGS.length}
@@ -888,6 +1240,12 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
         onResetReviewed={handleResetReviewed}
       />
 
+      {/* Contract Timeline Tracker */}
+      <ContractTimelineTracker
+        turnaroundWindow={scope.turnaroundWindow}
+        onCopyText={copyText}
+      />
+
       {/* Financial Impact Risk Heatmap */}
       <ContractRiskHeatmap
         result={result}
@@ -895,6 +1253,24 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
         flaggedClauseIds={flaggedClauseIds}
         activeClauseId={activeClause.clauseId}
         onSelectClause={handleInspectClauseFromLibrary}
+      />
+
+      {/* Interactive Negotiation Simulator (Aggressive / Standard / Collaborative) */}
+      <NegotiationSimulatorPanel
+        stance={negotiationStance}
+        onChangeStance={setNegotiationStance}
+        allClauses={resolvedClauses}
+        flaggedClauseIds={flaggedClauseIds}
+        clauseRiskWeights={clauseRiskWeights}
+        selectedClauseVariants={selectedClauseVariants}
+        counterparty={brandAgencyProfile}
+        onApplyStanceToCriticalClauses={handleApplyStanceToCriticalClauses}
+        onApplySingleClauseVariant={handleSwapClauseVariant}
+        onLogNegotiationNote={(clauseId, note) =>
+          handleAddNegotiationLogEntry(clauseId, 'creator_counter', note)
+        }
+        onInspectClauseInScanner={handleInspectClauseFromLibrary}
+        onCopyText={copyText}
       />
 
       {/* Main 2-Column Audit + Script Workbench */}
@@ -1062,6 +1438,10 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
                   const weightOption = RISK_WEIGHT_OPTIONS.find(
                     (o) => o.id === currentWeight
                   )!;
+                  const rowVariant = resolveClauseVariant(
+                    clause.clauseId,
+                    selectedClauseVariants[clause.clauseId]
+                  );
 
                   return (
                     <div
@@ -1139,12 +1519,38 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
                                       : 'notes'
                                   }`
                                 : ''}
+                              {rowVariant.id !== 'standard' && (
+                                <span
+                                  className={`font-medium ${
+                                    rowVariant.posture === 'creator_friendly'
+                                      ? 'text-emerald-700 dark:text-emerald-400'
+                                      : 'text-blue-700 dark:text-blue-400'
+                                  }`}
+                                >
+                                  {' '}
+                                  ·{' '}
+                                  {rowVariant.posture === 'creator_friendly'
+                                    ? 'Creator-Friendly'
+                                    : 'Compromise'}
+                                </span>
+                              )}
                             </button>
-                            <ClauseLegalGlossaryPopover
-                              clauseId={clause.clauseId}
-                              clauseTitle={clause.clauseTitle}
-                              variant="compact"
-                            />
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setAiExplainClause(clause)}
+                                aria-label={`AI Explain ${clause.clauseTitle}`}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded border border-blue-200 dark:border-blue-800/80 bg-blue-50/70 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                              >
+                                <Lightbulb className="w-3 h-3 shrink-0" aria-hidden="true" />
+                                AI Explain
+                              </button>
+                              <ClauseLegalGlossaryPopover
+                                clauseId={clause.clauseId}
+                                clauseTitle={clause.clauseTitle}
+                                variant="compact"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1274,11 +1680,21 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
                   })()}
                 </div>
 
-                <ClauseLegalGlossaryPopover
-                  clauseId={activeClause.clauseId}
-                  clauseTitle={activeClause.clauseTitle}
-                  variant="labeled"
-                />
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setAiExplainClause(activeClause)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 hover:bg-blue-100/80 dark:hover:bg-blue-900/60 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    <Lightbulb className="w-3 h-3 shrink-0" aria-hidden="true" />
+                    AI Explain
+                  </button>
+                  <ClauseLegalGlossaryPopover
+                    clauseId={activeClause.clauseId}
+                    clauseTitle={activeClause.clauseTitle}
+                    variant="labeled"
+                  />
+                </div>
               </div>
 
               {/* Risk Weight Classification Toggle */}
@@ -1362,26 +1778,106 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
                     {activeClause.advice}
                   </p>
                 </div>
+
+                {/* Personalized Counterparty Commentary */}
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      {hasCounterpartyProfile
+                        ? activeClauseCommentary.headline
+                        : 'Personalized Counterparty Commentary'}
+                    </span>
+                    {hasCounterpartyProfile ? (
+                      <div className="flex items-center gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            copyText(
+                              activeClauseCommentary.marginNote,
+                              `Clause #${activeClause.clauseId} personalized margin comment`
+                            )
+                          }
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-700 dark:text-blue-400 hover:underline cursor-pointer whitespace-nowrap shrink-0"
+                        >
+                          <Copy className="w-3 h-3" aria-hidden="true" />
+                          Copy Margin Note
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleAddNegotiationLogEntry(
+                              activeClause.clauseId,
+                              'creator_counter',
+                              activeClauseCommentary.marginNote
+                            )
+                          }
+                          className="text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:underline cursor-pointer whitespace-nowrap shrink-0"
+                        >
+                          Log Note
+                        </button>
+                      </div>
+                    ) : (
+                      <a
+                        href="#brand-agency-profile"
+                        className="text-[11px] font-medium text-blue-700 dark:text-blue-400 hover:underline whitespace-nowrap shrink-0"
+                      >
+                        Set Brand / Agency Profile
+                      </a>
+                    )}
+                  </div>
+                  {hasCounterpartyProfile ? (
+                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+                      {activeClauseCommentary.commentary}
+                    </p>
+                  ) : (
+                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+                      Enter a Brand Name, Representing Agency, or Primary Contact above to tailor negotiation commentary and copy-ready margin notes for this clause.
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                    Recommended Replacement Language
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      copyText(
-                        activeClause.replacementText,
-                        `Clause ${activeClause.clauseId} replacement text`
-                      )
-                    }
-                    className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer"
-                  >
-                    <Copy className="w-3 h-3" aria-hidden="true" />
-                    Copy Clause Fix
-                  </button>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      Recommended Replacement Language
+                    </span>
+                    {activeClauseVariant.id !== 'standard' && (
+                      <span
+                        className={`text-[11px] font-semibold ${
+                          activeClauseVariant.posture === 'creator_friendly'
+                            ? 'text-emerald-700 dark:text-emerald-400'
+                            : 'text-blue-700 dark:text-blue-400'
+                        }`}
+                      >
+                        · {activeClauseVariant.label}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenClauseLibrary(activeClause.clauseId)}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-blue-700 dark:hover:text-blue-400 cursor-pointer whitespace-nowrap shrink-0"
+                    >
+                      <ArrowLeftRight className="w-3 h-3" aria-hidden="true" />
+                      Swap from Library
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyText(
+                          activeClause.replacementText,
+                          `Clause ${activeClause.clauseId} replacement text`
+                        )
+                      }
+                      className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 cursor-pointer whitespace-nowrap shrink-0"
+                    >
+                      <Copy className="w-3 h-3" aria-hidden="true" />
+                      Copy Clause Fix
+                    </button>
+                  </div>
                 </div>
                 <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-mono">
                   {activeClause.replacementText}
@@ -1747,6 +2243,10 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
         onClose={() => setExportModalOpen(false)}
         brandName={brandName}
         creatorName={creatorName}
+        representedBy={brandAgencyProfile.representedBy}
+        primaryContactName={brandAgencyProfile.primaryContactName}
+        primaryContactRole={brandAgencyProfile.primaryContactRole}
+        primaryContactEmail={brandAgencyProfile.primaryContactEmail}
         onChangeBrandName={setBrandName}
         onChangeCreatorName={setCreatorName}
         profile={profile}
@@ -1755,6 +2255,45 @@ export const ContractAuditSection: React.FC<ContractAuditSectionProps> = ({
         flaggedClauses={flaggedClauses}
         clauseRiskWeights={clauseRiskWeights}
         customClauses={activeCustomClausesForDraft}
+        onCopyText={copyText}
+      />
+
+      {/* Gemini Clause AI Explain Modal */}
+      <ClauseAiExplainModal
+        clause={aiExplainClause}
+        onClose={() => setAiExplainClause(null)}
+        profile={profile}
+        scope={scope}
+        result={result}
+      />
+
+      {/* Gemini Bulk Propose Edits Modal (Critical & Moderate Flags) */}
+      <BulkProposeEditsModal
+        open={bulkEditsModalOpen}
+        onClose={() => setBulkEditsModalOpen(false)}
+        profile={profile}
+        scope={scope}
+        result={result}
+        flaggedClauses={flaggedClauses}
+        clauseRiskWeights={clauseRiskWeights}
+        brandName={brandName}
+        onFlagPresetClauses={handleFlagPresetClauses}
+        onAppendToCustomClauses={handleAppendBulkEditsToCustomClauses}
+        onLogProposedEdits={handleLogBulkProposedEdits}
+        onCopyText={copyText}
+      />
+
+      {/* Pre-Vetted Clause Library Modal */}
+      <ClauseLibraryModal
+        open={clauseLibraryOpen}
+        initialClauseId={clauseLibraryInitialId}
+        onClose={() => setClauseLibraryOpen(false)}
+        selectedVariants={selectedClauseVariants}
+        flaggedClauseIds={flaggedClauseIds}
+        onSwapClauseVariant={handleSwapClauseVariant}
+        onApplyPostureToAll={handleApplyPostureToAll}
+        onResetAllVariants={handleResetAllVariants}
+        onToggleFlagClause={onToggleClause}
         onCopyText={copyText}
       />
     </section>
