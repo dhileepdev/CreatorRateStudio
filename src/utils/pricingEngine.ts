@@ -1044,8 +1044,8 @@ export function calculateContractRiskScore(
   const rawExposure = Math.min(100, baseWeightSum + compoundBonus);
   const score =
     flaggedClauses.length === 0
-      ? 1
-      : Math.min(100, Math.max(1, Math.round(1 + 99 * Math.pow(rawExposure / 100, 0.68))));
+      ? 0
+      : Math.min(100, Math.max(1, Math.round(100 * Math.pow(rawExposure / 100, 0.72))));
 
   let level: ContractRiskLevel = 'low';
   let levelLabel = 'Low Risk';
